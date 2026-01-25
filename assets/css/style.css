@@ -67,32 +67,16 @@ a {
 }
 
 .logo img {
-    height: 70px;
+    height: 50px;
     width: auto;
-    max-width: 220px;
+    max-width: 280px;
     object-fit: contain;
 }
 
-/* Logo variants for different spaces */
-.logo .logo-full {
+/* Header logo - always rectangular */
+.logo .logo-header {
     display: block;
-}
-
-.logo .logo-text {
-    display: none;
-    height: 45px;
-    width: auto;
-    max-width: 280px;
-}
-
-/* Use text logo on rectangular/narrow headers */
-@media (max-width: 1200px) {
-    .logo .logo-full {
-        display: none;
-    }
-    .logo .logo-text {
-        display: block;
-    }
+    height: 50px;
 }
 
 .logo span {
@@ -173,17 +157,20 @@ a {
 .geo-line.v2 { left: 50%; }
 .geo-line.v3 { right: 10%; }
 
-/* Diamond Accent */
-.diamond {
+/* Hero Background Logo */
+.hero-logo-bg {
     position: absolute;
-    width: 200px;
-    height: 200px;
-    border: 1px solid rgba(212,168,75,0.15);
-    transform: rotate(45deg);
+    top: 20%;
+    right: 8%;
+    z-index: 1;
+    opacity: 0.15;
 }
 
-.diamond-1 { top: 20%; right: 15%; }
-.diamond-2 { top: 25%; right: 18%; width: 150px; height: 150px; }
+.hero-logo-bg img {
+    width: 400px;
+    height: auto;
+    max-width: 40vw;
+}
 
 /* Minimal Chart - Raleway Style */
 .minimal-chart {

@@ -32,9 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         $telefono = cleanInput($_POST['telefono'] ?? '');
         $mensaje = cleanInput($_POST['mensaje'] ?? '');
 
-        if (empty($nombre) || empty($email) || empty($mensaje)) {
+        if (empty($nombre) || empty($telefono) || empty($mensaje)) {
             $error_contacto = 'Por favor, completa todos los campos obligatorios.';
-        } elseif (!validarEmail($email)) {
+        } elseif (!empty($email) && !validarEmail($email)) {
             $error_contacto = 'El email no es válido.';
         } else {
             try {
@@ -64,8 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
     <header class="header">
         <div class="container">
             <a href="index.php" class="logo">
-                <img src="assets/images/logo-invercar.png" alt="InverCar" class="logo-full">
-                <img src="assets/images/logo-invercar-text.png" alt="InverCar" class="logo-text">
+                <img src="assets/images/logo-invercar-text.png" alt="InverCar" class="logo-header">
             </a>
             <nav class="nav">
                 <ul>
@@ -93,8 +92,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                 <div class="geo-line v v2"></div>
                 <div class="geo-line v v3"></div>
             </div>
-            <div class="diamond diamond-1"></div>
-            <div class="diamond diamond-2"></div>
+            <div class="hero-logo-bg">
+                <img src="assets/images/logo-invercar.png" alt="InverCar">
+            </div>
             <div class="hero-glow"></div>
             <!-- Minimal Chart -->
             <div class="minimal-chart">
@@ -253,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
     <section class="contact-section" id="contacto">
         <div class="container">
             <div class="section-title">
-                <h2>Empieza a Invertir</h2>
+                <h2>Contacta con Nosotros</h2>
                 <p>Contáctanos y te ayudaremos a comenzar tu inversión</p>
             </div>
 
@@ -281,14 +281,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     </div>
 
                     <div class="form-group">
-                        <label for="email">Email *</label>
-                        <input type="email" id="email" name="email" required
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email"
                                value="<?php echo escape($_POST['email'] ?? ''); ?>">
                     </div>
 
                     <div class="form-group">
-                        <label for="telefono">Teléfono</label>
-                        <input type="tel" id="telefono" name="telefono"
+                        <label for="telefono">Teléfono *</label>
+                        <input type="tel" id="telefono" name="telefono" required
                                value="<?php echo escape($_POST['telefono'] ?? ''); ?>">
                     </div>
 
