@@ -102,6 +102,10 @@ function getEstadisticasSistema() {
     $stmt = $db->query("SELECT SUM(precio_compra + gastos) as total FROM vehiculos WHERE estado IN ('en_venta', 'reservado')");
     $capitalEnVehiculos = $stmt->fetch()['total'] ?? 0;
 
+    // Número de vehículos comprados pero no vendidos (bienes raíces)
+    $stmt = $db->query("SELECT COUNT(*) as total FROM vehiculos WHERE estado IN ('en_venta', 'reservado')");
+    $vehiculosActuales = $stmt->fetch()['total'] ?? 0;
+
     // Valor de venta previsto de vehículos
     $stmt = $db->query("SELECT SUM(valor_venta_previsto) as total FROM vehiculos WHERE estado IN ('en_venta', 'reservado')");
     $valorVentaPrevisto = $stmt->fetch()['total'] ?? 0;
@@ -144,6 +148,7 @@ function getEstadisticasSistema() {
         'fondos_disponibles' => $fondosDisponibles,
         'rentabilidad_actual' => $rentabilidadVariable,
         'rentabilidad_anual' => $rentabilidadAnual,
+        'vehiculos_actuales' => $vehiculosActuales,
     ];
 }
 

@@ -155,9 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     <div class="label">Inversionistas Activos</div>
                 </div>
                 <div class="stat-card">
-                    <h3>Rentabilidad Actual</h3>
-                    <div class="value"><?php echo formatPercent($stats['rentabilidad_anual']); ?></div>
-                    <div class="label">Rendimiento Anual</div>
+                    <h3>Bienes Raíces</h3>
+                    <div class="value"><?php echo number_format($stats['vehiculos_actuales'], 0, ',', '.'); ?></div>
+                    <div class="label">Vehículos Actuales</div>
                 </div>
             </div>
         </div>
