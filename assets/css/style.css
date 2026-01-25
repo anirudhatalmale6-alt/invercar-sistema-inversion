@@ -435,6 +435,26 @@ a {
     margin-bottom: 20px;
 }
 
+/* Image Icons for Como Funciona */
+.explanation-icon-img {
+    width: 100%;
+    height: 180px;
+    margin-bottom: 25px;
+    overflow: hidden;
+    border: 1px solid rgba(212, 168, 75, 0.3);
+}
+
+.explanation-icon-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.explanation-block:hover .explanation-icon-img img {
+    transform: scale(1.05);
+}
+
 .explanation-block h3 {
     color: var(--gold);
     font-size: 1.3rem;

@@ -96,9 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
             <div class="hero-logo-bg">
                 <img src="assets/images/logo-invercar.png" alt="InverCar">
             </div>
-            <div class="hero-car">
-                <img src="assets/images/coche-hero.jpg" alt="Vehículo de inversión">
-            </div>
             <div class="hero-glow"></div>
             <!-- Minimal Chart -->
             <div class="minimal-chart">
@@ -174,12 +171,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
             </div>
             <div class="explanation-content">
                 <div class="explanation-block">
-                    <div class="explanation-icon">🚗</div>
+                    <div class="explanation-icon-img">
+                        <img src="assets/images/coche-hero.jpg" alt="Vehículo de inversión">
+                    </div>
                     <h3>Inversión Respaldada por Bienes Reales</h3>
                     <p>En InverCar agrupamos capital de múltiples inversores para adquirir vehículos de alta rotación. <strong>Tu inversión siempre está respaldada por un bien tangible</strong>, lo que minimiza significativamente el riesgo. A diferencia de otras inversiones, aquí existe una garantía real: el propio vehículo.</p>
                 </div>
                 <div class="explanation-block">
-                    <div class="explanation-icon">📊</div>
+                    <div class="explanation-icon-img">
+                        <img src="assets/images/fondo-2.jpg" alt="Monitores de inversión">
+                    </div>
                     <h3>Elige Tu Modalidad de Rentabilidad</h3>
                     <p>Al depositar tu capital, decides cómo quieres que trabaje tu dinero:</p>
                     <ul class="explanation-list">
@@ -188,7 +189,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     </ul>
                 </div>
                 <div class="explanation-block">
-                    <div class="explanation-icon">💰</div>
+                    <div class="explanation-icon-img">
+                        <img src="assets/images/icon-liquidez.jpg" alt="Liquidez">
+                    </div>
                     <h3>Liquidez Total: Tu Dinero Siempre Disponible</h3>
                     <p>Una de las grandes ventajas de InverCar: <strong>puedes retirar tu capital total o parcialmente cuando lo desees</strong>. Al hacerlo, recibirás la proporción de rentabilidad que te corresponda hasta ese momento. Sin permanencias, sin penalizaciones, con total transparencia.</p>
                 </div>
