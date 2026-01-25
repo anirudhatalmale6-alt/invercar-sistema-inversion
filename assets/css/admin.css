@@ -103,7 +103,14 @@ a {
 }
 
 .sidebar-menu .icon {
-    font-size: 1.2rem;
+    font-size: 1rem;
+    color: var(--gold);
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar-menu a.active .icon {
+    color: #000;
 }
 
 .sidebar-section {

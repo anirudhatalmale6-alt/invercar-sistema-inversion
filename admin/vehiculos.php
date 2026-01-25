@@ -135,20 +135,22 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
     <div class="admin-wrapper">
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="sidebar-logo">Inver<span>Car</span></div>
+            <div class="sidebar-logo">
+                <img src="../assets/images/logo-invercar-text.png" alt="InverCar" style="height: 40px; width: auto;">
+            </div>
             <div class="sidebar-badge">ADMIN</div>
 
             <ul class="sidebar-menu">
-                <li><a href="index.php"><span class="icon">📊</span> Dashboard</a></li>
-                <li><a href="vehiculos.php" class="active"><span class="icon">🚗</span> Vehículos</a></li>
-                <li><a href="clientes.php"><span class="icon">👥</span> Clientes</a></li>
+                <li><a href="index.php"><span class="icon">◈</span> Panel</a></li>
+                <li><a href="clientes.php"><span class="icon">◉</span> Clientes</a></li>
+                <li><a href="vehiculos.php" class="active"><span class="icon">◆</span> Vehículos</a></li>
 
                 <li class="sidebar-section">Configuración</li>
-                <li><a href="contactos.php"><span class="icon">📨</span> Mensajes <?php if($mensajesNoLeidos > 0): ?><span class="badge badge-danger"><?php echo $mensajesNoLeidos; ?></span><?php endif; ?></a></li>
-                <li><a href="configuracion.php"><span class="icon">⚙️</span> Ajustes</a></li>
+                <li><a href="contactos.php"><span class="icon">◇</span> Mensajes <?php if($mensajesNoLeidos > 0): ?><span class="badge badge-danger"><?php echo $mensajesNoLeidos; ?></span><?php endif; ?></a></li>
+                <li><a href="configuracion.php"><span class="icon">◎</span> Ajustes</a></li>
 
                 <li class="sidebar-section">Cuenta</li>
-                <li><a href="logout.php"><span class="icon">🚪</span> Cerrar sesión</a></li>
+                <li><a href="logout.php"><span class="icon">◁</span> Cerrar sesión</a></li>
             </ul>
         </aside>
 
