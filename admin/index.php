@@ -48,8 +48,12 @@ for ($i = 1; $i <= 9; $i++) {
 $maxRentabilidad = max(array_column($rentabilidadSemanal, 'porcentaje'));
 
 // Últimos clientes registrados
+$rentabilidadFijaConfig = floatval(getConfig('rentabilidad_fija', 5));
 $ultimosClientes = $db->query("
-    SELECT id, nombre, apellidos, email, capital_invertido, tipo_inversion, created_at
+    SELECT id, nombre, apellidos, capital_invertido, tipo_inversion,
+           CASE WHEN tipo_inversion = 'fija' THEN capital_invertido ELSE 0 END as capital_fijo,
+           CASE WHEN tipo_inversion = 'variable' THEN capital_invertido ELSE 0 END as capital_variable,
+           created_at
     FROM clientes
     WHERE activo = 1 AND registro_completo = 1
     ORDER BY created_at DESC
@@ -77,8 +81,8 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
         <main class="main-content">
             <div class="top-bar">
                 <div class="page-title">
-                    <h1>Gestión de Clientes</h1>
-                    <p>Bienvenido, administra los capitales invertidos de tus clientes.</p>
+                    <h1>Panel</h1>
+                    <p>Panel de administración central</p>
                 </div>
                 <div class="user-menu">
                     <div class="user-info">
@@ -92,44 +96,51 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
             <div class="dashboard-layout">
                 <!-- Columna Principal -->
                 <div class="dashboard-main">
-                    <!-- Buscador -->
-                    <div class="search-box">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                        <input type="text" placeholder="Buscar cliente..." id="searchInput">
-                    </div>
-
                     <!-- Tabla de Clientes -->
                     <div class="card">
                         <div class="table-responsive">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Clientes</th>
-                                        <th>Email</th>
-                                        <th>Capital Invertido</th>
-                                        <th>Tipo</th>
+                                        <th>Nombre y Apellidos</th>
+                                        <th>Capital</th>
+                                        <th>Capital Fijo</th>
+                                        <th>Capital Variable</th>
+                                        <th>Rent. Fijo</th>
+                                        <th>Rent. Variable</th>
+                                        <th>Media Rent.</th>
                                     </tr>
                                 </thead>
                                 <tbody id="clientesTable">
                                     <?php if (empty($ultimosClientes)): ?>
                                     <tr>
-                                        <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
                                             No hay clientes registrados
                                         </td>
                                     </tr>
                                     <?php else: ?>
-                                        <?php foreach ($ultimosClientes as $cliente): ?>
+                                        <?php foreach ($ultimosClientes as $cliente):
+                                            $rentFijo = $cliente['capital_fijo'] > 0 ? $rentabilidadFijaConfig : 0;
+                                            $rentVariable = $cliente['capital_variable'] > 0 ? $rentabilidadVariableActual : 0;
+                                            $mediaRent = 0;
+                                            if ($rentFijo > 0 && $rentVariable > 0) {
+                                                $mediaRent = ($rentFijo + $rentVariable) / 2;
+                                            } elseif ($rentFijo > 0) {
+                                                $mediaRent = $rentFijo;
+                                            } elseif ($rentVariable > 0) {
+                                                $mediaRent = $rentVariable;
+                                            }
+                                        ?>
                                         <tr>
                                             <td>
                                                 <strong><?php echo escape($cliente['nombre'] . ' ' . $cliente['apellidos']); ?></strong>
                                             </td>
-                                            <td style="color: var(--text-muted);"><?php echo escape($cliente['email']); ?></td>
                                             <td><strong><?php echo formatMoney($cliente['capital_invertido']); ?></strong></td>
-                                            <td>
-                                                <span class="badge <?php echo $cliente['tipo_inversion'] === 'fija' ? 'badge-info' : 'badge-success'; ?>">
-                                                    Rentabilidad <?php echo ucfirst($cliente['tipo_inversion']); ?>
-                                                </span>
-                                            </td>
+                                            <td style="color: var(--blue-accent);"><?php echo formatMoney($cliente['capital_fijo']); ?></td>
+                                            <td style="color: var(--green-accent);"><?php echo formatMoney($cliente['capital_variable']); ?></td>
+                                            <td style="color: var(--blue-accent);"><?php echo number_format($rentFijo, 1, ',', '.'); ?>%</td>
+                                            <td style="color: var(--green-accent);"><?php echo number_format($rentVariable, 1, ',', '.'); ?>%</td>
+                                            <td><strong><?php echo number_format($mediaRent, 1, ',', '.'); ?>%</strong></td>
                                         </tr>
                                         <?php endforeach; ?>
                                     <?php endif; ?>
@@ -257,16 +268,5 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
         </main>
     </div>
 
-    <script>
-        // Filtro de búsqueda simple
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            const filter = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#clientesTable tr');
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(filter) ? '' : 'none';
-            });
-        });
-    </script>
 </body>
 </html>
