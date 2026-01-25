@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
     <title>InverCar - Maximiza tus Inversiones</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- Header -->
@@ -81,67 +81,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
     <section class="hero" id="inicio">
         <!-- Background Elements -->
         <div class="hero-bg">
-            <div class="gradient-mesh"></div>
-            <div class="modern-chart">
-                <svg viewBox="0 0 1400 500" preserveAspectRatio="none">
+            <!-- Geometric Pattern -->
+            <div class="geo-pattern">
+                <div class="geo-line h h1"></div>
+                <div class="geo-line h h2"></div>
+                <div class="geo-line h h3"></div>
+                <div class="geo-line v v1"></div>
+                <div class="geo-line v v2"></div>
+                <div class="geo-line v v3"></div>
+            </div>
+            <div class="diamond diamond-1"></div>
+            <div class="diamond diamond-2"></div>
+            <div class="hero-glow"></div>
+            <!-- Minimal Chart -->
+            <div class="minimal-chart">
+                <svg viewBox="0 0 1400 400" preserveAspectRatio="none">
                     <defs>
-                        <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style="stop-color:#d4a84b;stop-opacity:0.6" />
-                            <stop offset="100%" style="stop-color:#d4a84b;stop-opacity:0.1" />
-                        </linearGradient>
-                        <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style="stop-color:#d4a84b;stop-opacity:0.3" />
+                        <linearGradient id="minGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#d4a84b;stop-opacity:0.4" />
                             <stop offset="100%" style="stop-color:#d4a84b;stop-opacity:0" />
                         </linearGradient>
                     </defs>
-                    <rect x="80" y="350" width="50" height="150" fill="url(#barGrad)" rx="6"/>
-                    <rect x="160" y="300" width="50" height="200" fill="url(#barGrad)" rx="6"/>
-                    <rect x="240" y="320" width="50" height="180" fill="url(#barGrad)" rx="6"/>
-                    <rect x="320" y="250" width="50" height="250" fill="url(#barGrad)" rx="6"/>
-                    <rect x="400" y="280" width="50" height="220" fill="url(#barGrad)" rx="6"/>
-                    <rect x="480" y="200" width="50" height="300" fill="url(#barGrad)" rx="6"/>
-                    <rect x="560" y="220" width="50" height="280" fill="url(#barGrad)" rx="6"/>
-                    <rect x="640" y="150" width="50" height="350" fill="url(#barGrad)" rx="6"/>
-                    <rect x="720" y="180" width="50" height="320" fill="url(#barGrad)" rx="6"/>
-                    <rect x="800" y="120" width="50" height="380" fill="url(#barGrad)" rx="6"/>
-                    <path d="M105,330 Q185,280 265,300 T425,230 T585,180 T745,130 T905,100 T1065,60 T1225,40"
-                          stroke="#d4a84b" stroke-width="3" fill="none" opacity="0.9"/>
-                    <path d="M105,330 Q185,280 265,300 T425,230 T585,180 T745,130 T905,100 T1065,60 T1225,40 L1400,40 L1400,500 L105,500 Z"
-                          fill="url(#areaGrad)"/>
-                    <circle cx="265" cy="300" r="6" fill="#d4a84b"/>
-                    <circle cx="425" cy="230" r="6" fill="#d4a84b"/>
-                    <circle cx="585" cy="180" r="6" fill="#d4a84b"/>
-                    <circle cx="745" cy="130" r="6" fill="#d4a84b"/>
-                    <circle cx="905" cy="100" r="6" fill="#d4a84b"/>
+                    <rect x="100" y="280" width="30" height="120" fill="url(#minGrad)"/>
+                    <rect x="180" y="240" width="30" height="160" fill="url(#minGrad)"/>
+                    <rect x="260" y="260" width="30" height="140" fill="url(#minGrad)"/>
+                    <rect x="340" y="200" width="30" height="200" fill="url(#minGrad)"/>
+                    <rect x="420" y="220" width="30" height="180" fill="url(#minGrad)"/>
+                    <rect x="500" y="160" width="30" height="240" fill="url(#minGrad)"/>
+                    <rect x="580" y="180" width="30" height="220" fill="url(#minGrad)"/>
+                    <rect x="660" y="120" width="30" height="280" fill="url(#minGrad)"/>
+                    <rect x="740" y="140" width="30" height="260" fill="url(#minGrad)"/>
+                    <rect x="820" y="80" width="30" height="320" fill="url(#minGrad)"/>
+                    <rect x="900" y="100" width="30" height="300" fill="url(#minGrad)"/>
+                    <rect x="980" y="60" width="30" height="340" fill="url(#minGrad)"/>
+                    <path d="M115,260 L195,220 L275,240 L355,180 L435,200 L515,140 L595,160 L675,100 L755,120 L835,60 L915,80 L995,40"
+                          stroke="#d4a84b" stroke-width="2" fill="none"/>
+                    <circle cx="355" cy="180" r="4" fill="#d4a84b"/>
+                    <circle cx="515" cy="140" r="4" fill="#d4a84b"/>
+                    <circle cx="675" cy="100" r="4" fill="#d4a84b"/>
+                    <circle cx="835" cy="60" r="4" fill="#d4a84b"/>
+                    <circle cx="995" cy="40" r="4" fill="#d4a84b"/>
                 </svg>
-            </div>
-            <!-- Floating Cards -->
-            <div class="float-card float-card-1">
-                <div class="mini-chart">
-                    <div class="mini-bar" style="height: 50%;"></div>
-                    <div class="mini-bar" style="height: 70%;"></div>
-                    <div class="mini-bar" style="height: 60%;"></div>
-                    <div class="mini-bar" style="height: 90%;"></div>
-                    <div class="mini-bar" style="height: 75%;"></div>
-                    <div class="mini-bar" style="height: 100%;"></div>
-                </div>
-                <div class="fc-value"><?php echo formatPercent($stats['rentabilidad_anual']); ?></div>
-                <div class="fc-label">Rentabilidad Anual</div>
-            </div>
-            <div class="float-card float-card-2">
-                <div class="fc-value"><?php echo number_format($stats['clientes_totales'], 0, ',', '.'); ?></div>
-                <div class="fc-label">Inversores activos</div>
             </div>
         </div>
         <div class="hero-content">
-            <div class="hero-tag">
-                <span class="dot"></span>
-                Inversión Premium en Vehículos
-            </div>
+            <div class="hero-eyebrow">Inversión Premium</div>
             <h1>Buena rentabilidad garantizada a través de la <span>compra de bienes</span> (sector automoción)</h1>
             <p>Nosotros nos encargamos de escoger las mejores operaciones para que obtengas una gran rentabilidad sin ningún tipo de riesgo</p>
             <div class="hero-buttons">
-                <a href="#como-funciona" class="btn btn-primary">Saber Más →</a>
+                <a href="#como-funciona" class="btn btn-primary">Saber Más</a>
                 <a href="cliente/registro.php" class="btn btn-secondary">Empieza a Invertir</a>
             </div>
         </div>
