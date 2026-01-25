@@ -73,6 +73,28 @@ a {
     object-fit: contain;
 }
 
+/* Logo variants for different spaces */
+.logo .logo-full {
+    display: block;
+}
+
+.logo .logo-text {
+    display: none;
+    height: 45px;
+    width: auto;
+    max-width: 280px;
+}
+
+/* Use text logo on rectangular/narrow headers */
+@media (max-width: 1200px) {
+    .logo .logo-full {
+        display: none;
+    }
+    .logo .logo-text {
+        display: block;
+    }
+}
+
 .logo span {
     color: var(--primary-color);
 }

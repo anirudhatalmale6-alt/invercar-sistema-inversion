@@ -63,7 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
     <!-- Header -->
     <header class="header">
         <div class="container">
-            <a href="index.php" class="logo"><img src="assets/images/logo-invercar.png" alt="InverCar" style="height: 70px; max-width: 200px;"></a>
+            <a href="index.php" class="logo">
+                <img src="assets/images/logo-invercar.png" alt="InverCar" class="logo-full">
+                <img src="assets/images/logo-invercar-text.svg" alt="InverCar" class="logo-text">
+            </a>
             <nav class="nav">
                 <ul>
                     <li><a href="#inicio" class="active">Inicio</a></li>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 60">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e8c068"/>
+      <stop offset="100%" style="stop-color:#d4a84b"/>
+    </linearGradient>
+  </defs>
+  <!-- IC Icon Box -->
+  <rect x="0" y="10" width="40" height="40" fill="none" stroke="url(#goldGrad)" stroke-width="2"/>
+  <text x="20" y="38" font-family="Raleway, sans-serif" font-size="18" font-weight="600" fill="url(#goldGrad)" text-anchor="middle">IC</text>
+
+  <!-- InverCar Text -->
+  <text x="55" y="32" font-family="Raleway, sans-serif" font-size="24" font-weight="300" fill="#ffffff" letter-spacing="3">INVER</text>
+  <text x="138" y="32" font-family="Raleway, sans-serif" font-size="24" font-weight="600" fill="url(#goldGrad)" letter-spacing="3">CAR</text>
+
+  <!-- Subtitle -->
+  <text x="55" y="50" font-family="Raleway, sans-serif" font-size="8" font-weight="400" fill="#777" letter-spacing="2">INVERSIÓN EN VEHÍCULOS</text>
+</svg>
