@@ -93,7 +93,11 @@ a {
     justify-content: center;
     text-align: center;
     padding: 100px 20px 60px;
-    background: linear-gradient(135deg, var(--dark-bg) 0%, var(--secondary-color) 100%);
+    background:
+        linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.85) 100%),
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800"><defs><linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="%23001a33"/><stop offset="100%" stop-color="%23000000"/></linearGradient><linearGradient id="goldGrad" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="%23d4a84b" stop-opacity="0.3"/><stop offset="100%" stop-color="%23d4a84b" stop-opacity="0"/></linearGradient></defs><rect fill="url(%23skyGrad)" width="1200" height="800"/><g opacity="0.4"><rect x="50" y="500" width="40" height="200" fill="%23d4a84b" opacity="0.6"/><rect x="110" y="450" width="40" height="250" fill="%23d4a84b" opacity="0.5"/><rect x="170" y="480" width="40" height="220" fill="%23d4a84b" opacity="0.6"/><rect x="230" y="380" width="40" height="320" fill="%23d4a84b" opacity="0.7"/><rect x="290" y="420" width="40" height="280" fill="%23d4a84b" opacity="0.5"/><rect x="350" y="350" width="40" height="350" fill="%23d4a84b" opacity="0.8"/><rect x="410" y="300" width="40" height="400" fill="%23d4a84b" opacity="0.6"/><rect x="470" y="280" width="40" height="420" fill="%23d4a84b" opacity="0.7"/></g><polyline points="50,520 150,400 250,450 350,300 450,350 550,200 650,250 750,150 850,180 950,100 1050,120 1150,50" stroke="%23d4a84b" stroke-width="3" fill="none" opacity="0.8"/><polyline points="50,550 150,480 250,500 350,400 450,420 550,320 650,350 750,280 850,300 950,220 1050,250 1150,180" stroke="%23e8c068" stroke-width="2" fill="none" opacity="0.5"/><circle cx="350" cy="300" r="5" fill="%23d4a84b"/><circle cx="550" cy="200" r="5" fill="%23d4a84b"/><circle cx="750" cy="150" r="5" fill="%23d4a84b"/><circle cx="950" cy="100" r="5" fill="%23d4a84b"/><g opacity="0.15"><rect x="800" y="400" width="350" height="350" rx="10" fill="%23d4a84b"/><ellipse cx="975" cy="575" rx="120" ry="80" fill="%23000"/><rect x="920" y="480" width="110" height="95" fill="%23111"/></g></svg>');
+    background-size: cover;
+    background-position: center;
     position: relative;
     overflow: hidden;
 }
@@ -105,8 +109,10 @@ a {
     left: 0;
     right: 0;
     bottom: 0;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23d4a84b" stop-opacity="0.1"/><stop offset="100%" stop-color="%23d4a84b" stop-opacity="0"/></linearGradient></defs><rect fill="url(%23g)" width="100" height="100"/></svg>');
-    opacity: 0.5;
+    background:
+        radial-gradient(ellipse at 30% 20%, rgba(212, 168, 75, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(212, 168, 75, 0.1) 0%, transparent 40%);
+    pointer-events: none;
 }
 
 .hero-content {
@@ -180,17 +186,19 @@ a {
 }
 
 .stat-card {
-    background: var(--card-bg);
+    background: linear-gradient(145deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.98) 100%);
     border-radius: 15px;
     padding: 30px;
     text-align: center;
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(212, 168, 75, 0.3);
     transition: transform 0.3s, box-shadow 0.3s;
+    backdrop-filter: blur(10px);
 }
 
 .stat-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 40px rgba(212, 168, 75, 0.15);
+    border-color: rgba(212, 168, 75, 0.5);
 }
 
 .stat-card h3 {
@@ -216,7 +224,11 @@ a {
 /* Data Section */
 .data-section {
     padding: 80px 0;
-    background: var(--secondary-color);
+    background:
+        linear-gradient(180deg, rgba(13,13,13,0.95) 0%, rgba(0,0,0,0.98) 100%),
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400"><defs><linearGradient id="dataGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23d4a84b" stop-opacity="0.05"/><stop offset="100%" stop-color="%23000" stop-opacity="0"/></linearGradient></defs><rect fill="%23000" width="800" height="400"/><g opacity="0.3"><circle cx="650" cy="200" r="150" fill="none" stroke="%23d4a84b" stroke-width="1" opacity="0.3"/><circle cx="650" cy="200" r="100" fill="none" stroke="%23d4a84b" stroke-width="1" opacity="0.2"/><circle cx="650" cy="200" r="50" fill="none" stroke="%23d4a84b" stroke-width="1" opacity="0.4"/><rect x="600" y="150" width="100" height="100" fill="%23d4a84b" opacity="0.1" rx="5"/></g></svg>');
+    background-size: cover;
+    position: relative;
 }
 
 .section-title {
@@ -277,7 +289,7 @@ a {
 .step-number {
     width: 60px;
     height: 60px;
-    background: var(--primary-color);
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -285,6 +297,8 @@ a {
     font-size: 1.5rem;
     font-weight: bold;
     margin: 0 auto 20px;
+    color: #000;
+    box-shadow: 0 5px 20px rgba(212, 168, 75, 0.3);
 }
 
 .step h3 {
@@ -299,16 +313,20 @@ a {
 /* Contact Form */
 .contact-section {
     padding: 80px 0;
-    background: var(--secondary-color);
+    background:
+        linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(13,13,13,0.95) 100%),
+        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400"><g opacity="0.1"><polyline points="0,300 100,250 200,280 300,200 400,230 500,150 600,180" stroke="%23d4a84b" stroke-width="2" fill="none"/><polyline points="0,350 100,300 200,320 300,270 400,290 500,220 600,250" stroke="%23d4a84b" stroke-width="1" fill="none" opacity="0.5"/></g></svg>');
+    background-size: cover;
 }
 
 .contact-form {
     max-width: 600px;
     margin: 0 auto;
-    background: var(--card-bg);
+    background: linear-gradient(145deg, rgba(20, 20, 20, 0.95) 0%, rgba(10, 10, 10, 0.98) 100%);
     padding: 40px;
     border-radius: 15px;
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(212, 168, 75, 0.3);
+    backdrop-filter: blur(10px);
 }
 
 .form-group {
