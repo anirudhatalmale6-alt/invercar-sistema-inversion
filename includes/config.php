@@ -17,7 +17,7 @@ define('DB_PASS', 'AlbRodRod*2026');
 define('DB_CHARSET', 'utf8mb4');
 
 // Configuración del sitio
-define('SITE_URL', 'https://tu-dominio.com');
+define('SITE_URL', 'https://invercar.garaje86.com');
 define('SITE_NAME', 'InverCar');
 
 // Configuración de Email (SMTP Hostalia)
