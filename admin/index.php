@@ -32,23 +32,88 @@ $statsVehiculos = $db->query("
     FROM vehiculos
 ")->fetch();
 
+// Vehículos activos para las fichas
+$vehiculosActivos = $db->query("
+    SELECT id, marca, modelo, version, anio, precio_compra, valor_venta_previsto, foto, estado
+    FROM vehiculos
+    WHERE estado IN ('en_venta', 'reservado')
+    ORDER BY created_at DESC
+")->fetchAll();
+
 // Configuración
 $rentabilidadFija = floatval(getConfig('rentabilidad_fija', 5));
 $rentabilidadVariableActual = floatval(getConfig('rentabilidad_variable_actual', 14.8));
 
-// Datos para gráfico de rentabilidad semanal (simulación de las últimas 9 semanas)
-$rentabilidadSemanal = [];
-for ($i = 1; $i <= 9; $i++) {
-    // En producción esto vendría de la base de datos
-    $rentabilidadSemanal[] = [
-        'semana' => $i,
-        'porcentaje' => $rentabilidadVariableActual * (0.7 + (rand(0, 60) / 100))
+// Calcular semana actual del año
+$semanaActual = (int) date('W');
+$anioActual = (int) date('Y');
+
+// Obtener últimas 9 semanas de rentabilidad del histórico
+$rentabilidadHistorico = [];
+try {
+    // Intentar obtener datos reales de la tabla
+    $stmt = $db->prepare("
+        SELECT semana, anio, tipo, porcentaje, rentabilidad_generada, capital_base
+        FROM rentabilidad_historico
+        WHERE (anio = :anio AND semana <= :semana) OR (anio = :anio_prev AND semana > :semana)
+        ORDER BY anio DESC, semana DESC
+        LIMIT 18
+    ");
+    $semanaLimite = $semanaActual - 9;
+    $anioPrev = $semanaLimite < 1 ? $anioActual - 1 : $anioActual;
+    $stmt->execute([
+        ':anio' => $anioActual,
+        ':semana' => $semanaActual,
+        ':anio_prev' => $anioPrev
+    ]);
+    $rentabilidadHistorico = $stmt->fetchAll();
+} catch (Exception $e) {
+    // Tabla no existe aún, se usarán datos simulados
+}
+
+// Preparar datos para el gráfico (últimas 9 semanas)
+$semanasGrafico = [];
+for ($i = 8; $i >= 0; $i--) {
+    $semNum = $semanaActual - $i;
+    $anio = $anioActual;
+    if ($semNum <= 0) {
+        $semNum += 52;
+        $anio--;
+    }
+
+    // Buscar datos en histórico o simular
+    $rentFija = $rentabilidadFija;
+    $rentVariable = $rentabilidadVariableActual * (0.8 + (rand(0, 40) / 100)); // Simular variación
+
+    foreach ($rentabilidadHistorico as $hist) {
+        if ($hist['semana'] == $semNum && $hist['anio'] == $anio) {
+            if ($hist['tipo'] == 'fija') $rentFija = floatval($hist['porcentaje']);
+            if ($hist['tipo'] == 'variable') $rentVariable = floatval($hist['porcentaje']);
+        }
+    }
+
+    $mediaRent = ($rentFija + $rentVariable) / 2;
+
+    $semanasGrafico[] = [
+        'semana' => $semNum,
+        'anio' => $anio,
+        'label' => 'S' . $semNum,
+        'fija' => $rentFija,
+        'variable' => $rentVariable,
+        'media' => $mediaRent
     ];
 }
-$maxRentabilidad = max(array_column($rentabilidadSemanal, 'porcentaje'));
+
+// Calcular rentabilidad generada
+$capitalFija = floatval($statsClientes['capital_fija'] ?? 0);
+$capitalVariable = floatval($statsClientes['capital_variable'] ?? 0);
+$rentabilidadGeneradaFija = $capitalFija * ($rentabilidadFija / 100);
+$rentabilidadGeneradaVariable = $capitalVariable * ($rentabilidadVariableActual / 100);
+$rentabilidadTotalGenerada = $rentabilidadGeneradaFija + $rentabilidadGeneradaVariable;
+$capitalTotal = $capitalFija + $capitalVariable;
+$rentabilidadMediaPorcentaje = $capitalTotal > 0 ? ($rentabilidadTotalGenerada / $capitalTotal) * 100 : 0;
 
 // Últimos clientes registrados
-$rentabilidadFijaConfig = floatval(getConfig('rentabilidad_fija', 5));
 $ultimosClientes = $db->query("
     SELECT id, nombre, apellidos, capital_invertido, tipo_inversion,
            CASE WHEN tipo_inversion = 'fija' THEN capital_invertido ELSE 0 END as capital_fijo,
@@ -59,19 +124,190 @@ $ultimosClientes = $db->query("
     ORDER BY created_at DESC
     LIMIT 5
 ")->fetchAll();
-
-// Mensajes no leídos
-$mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE leido = 0")->fetch()['total'];
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Admin InverCar</title>
+    <title>Panel - Admin InverCar</title>
     <link rel="icon" type="image/svg+xml" href="../assets/images/favicon.svg">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Fichas de vehículos */
+        .vehicle-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+        .vehicle-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .vehicle-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(212, 168, 75, 0.15);
+        }
+        .vehicle-card-image {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .vehicle-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .vehicle-card-image .no-image {
+            color: var(--text-muted);
+            font-size: 2.5rem;
+        }
+        .vehicle-card-body {
+            padding: 18px;
+        }
+        .vehicle-card-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text-light);
+        }
+        .vehicle-card-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+        .vehicle-card-prices {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .vehicle-price-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+        .vehicle-price-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .vehicle-price-value {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .vehicle-price-value.compra {
+            color: var(--blue-accent);
+        }
+        .vehicle-price-value.venta {
+            color: var(--green-accent);
+        }
+
+        /* Gráfico de líneas */
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 15px;
+        }
+
+        /* Rentabilidad grande */
+        .rent-big-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        .rent-big-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            backdrop-filter: blur(10px);
+        }
+        .rent-big-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .rent-big-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+        .rent-big-icon.fija {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--blue-accent);
+        }
+        .rent-big-icon.variable {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--green-accent);
+        }
+        .rent-big-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        .rent-big-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .rent-big-value.fija { color: var(--blue-accent); }
+        .rent-big-value.variable { color: var(--green-accent); }
+        .rent-big-percent {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            background: rgba(34, 197, 94, 0.15);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--green-accent);
+        }
+        .rent-big-capital {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .rent-big-capital strong {
+            color: var(--text-light);
+        }
+
+        /* Section titles */
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--gold);
+            border-radius: 2px;
+        }
+    </style>
 </head>
 <body>
     <div class="admin-wrapper">
@@ -92,11 +328,51 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                 </div>
             </div>
 
-            <!-- Layout de 2 columnas -->
-            <div class="dashboard-layout">
+            <!-- Tarjetas de Rentabilidad (Arriba) -->
+            <div class="rent-big-cards">
+                <div class="rent-big-card">
+                    <div class="rent-big-header">
+                        <div class="rent-big-icon fija">€</div>
+                        <div class="rent-big-title">Rentabilidad Fija</div>
+                    </div>
+                    <div class="rent-big-value fija"><?php echo formatMoney($rentabilidadGeneradaFija); ?></div>
+                    <div class="rent-big-percent">▲ <?php echo number_format($rentabilidadFija, 1, ',', '.'); ?>%</div>
+                    <div class="rent-big-capital">
+                        Capital invertido: <strong><?php echo formatMoney($capitalFija); ?></strong>
+                    </div>
+                </div>
+                <div class="rent-big-card">
+                    <div class="rent-big-header">
+                        <div class="rent-big-icon variable">€</div>
+                        <div class="rent-big-title">Rentabilidad Variable</div>
+                    </div>
+                    <div class="rent-big-value variable"><?php echo formatMoney($rentabilidadGeneradaVariable); ?></div>
+                    <div class="rent-big-percent">▲ <?php echo number_format($rentabilidadVariableActual, 1, ',', '.'); ?>%</div>
+                    <div class="rent-big-capital">
+                        Capital invertido: <strong><?php echo formatMoney($capitalVariable); ?></strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Rentabilidad Media Semanal -->
+            <div class="card" style="margin-bottom: 25px;">
+                <div class="card-header">
+                    <h2>Rentabilidad Media Semanal</h2>
+                    <span style="color: var(--text-muted); font-size: 0.85rem;">Últimas 9 semanas</span>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="rentabilidadChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Layout principal -->
+            <div class="dashboard-layout" style="grid-template-columns: 1fr 300px;">
                 <!-- Columna Principal -->
                 <div class="dashboard-main">
                     <!-- Tabla de Clientes -->
+                    <div class="section-title">Clientes</div>
                     <div class="card">
                         <div class="table-responsive">
                             <table>
@@ -120,7 +396,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                     </tr>
                                     <?php else: ?>
                                         <?php foreach ($ultimosClientes as $cliente):
-                                            $rentFijo = $cliente['capital_fijo'] > 0 ? $rentabilidadFijaConfig : 0;
+                                            $rentFijo = $cliente['capital_fijo'] > 0 ? $rentabilidadFija : 0;
                                             $rentVariable = $cliente['capital_variable'] > 0 ? $rentabilidadVariableActual : 0;
                                             $mediaRent = 0;
                                             if ($rentFijo > 0 && $rentVariable > 0) {
@@ -147,40 +423,45 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                 </tbody>
                             </table>
                         </div>
-                        <?php if (!empty($ultimosClientes)): ?>
-                        <div style="padding: 15px 20px; border-top: 1px solid var(--border-color); display: flex; justify-content: center; gap: 10px;">
-                            <span class="pagination">
-                                <a href="#">&laquo; Anterior</a>
-                                <span class="active">1</span>
-                                <a href="#">2</a>
-                                <a href="#">3</a>
-                                <a href="#">Siguiente &raquo;</a>
-                            </span>
-                        </div>
-                        <?php endif; ?>
                     </div>
 
-                    <!-- Tarjetas de Rentabilidad -->
-                    <div class="rent-cards">
-                        <div class="rent-card">
-                            <div class="rent-card-icon fija">€</div>
-                            <div class="rent-card-title">Rentabilidad Fija</div>
-                            <div class="rent-card-value fija"><?php echo formatMoney($statsClientes['capital_fija'] ?? 0); ?></div>
-                            <div class="rent-card-detail">
-                                Acumulado semanal
-                                <span class="rent-card-percent up">▲ <?php echo number_format($rentabilidadFija, 1, ',', '.'); ?>%</span>
-                            </div>
+                    <!-- Fichas de Vehículos -->
+                    <div class="section-title" style="margin-top: 30px;">Vehículos en Activo</div>
+                    <?php if (empty($vehiculosActivos)): ?>
+                        <div class="card" style="padding: 40px; text-align: center; color: var(--text-muted);">
+                            No hay vehículos activos
                         </div>
-                        <div class="rent-card">
-                            <div class="rent-card-icon variable">€</div>
-                            <div class="rent-card-title">Rentabilidad Variable</div>
-                            <div class="rent-card-value variable"><?php echo formatMoney($statsClientes['capital_variable'] ?? 0); ?></div>
-                            <div class="rent-card-detail">
-                                Acumulado semanal
-                                <span class="rent-card-percent up">▲ <?php echo number_format($rentabilidadVariableActual, 1, ',', '.'); ?>%</span>
+                    <?php else: ?>
+                        <div class="vehicle-grid">
+                            <?php foreach ($vehiculosActivos as $vehiculo): ?>
+                            <div class="vehicle-card">
+                                <div class="vehicle-card-image">
+                                    <?php if ($vehiculo['foto']): ?>
+                                        <img src="../uploads/vehiculos/<?php echo escape($vehiculo['foto']); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
+                                    <?php else: ?>
+                                        <span class="no-image">🚗</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="vehicle-card-body">
+                                    <div class="vehicle-card-title"><?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?></div>
+                                    <div class="vehicle-card-subtitle">
+                                        <?php echo escape($vehiculo['version'] ?? ''); ?> · <?php echo escape($vehiculo['anio']); ?>
+                                    </div>
+                                    <div class="vehicle-card-prices">
+                                        <div class="vehicle-price-item">
+                                            <div class="vehicle-price-label">Compra</div>
+                                            <div class="vehicle-price-value compra"><?php echo formatMoney($vehiculo['precio_compra']); ?></div>
+                                        </div>
+                                        <div class="vehicle-price-item">
+                                            <div class="vehicle-price-label">Venta</div>
+                                            <div class="vehicle-price-value venta"><?php echo formatMoney($vehiculo['valor_venta_previsto']); ?></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+                            <?php endforeach; ?>
                         </div>
-                    </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Panel Lateral -->
@@ -200,45 +481,6 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         <div class="stat-panel-row">
                             <span class="stat-panel-label variable">Rentabilidad Variable</span>
                             <span class="stat-panel-amount variable"><?php echo formatMoney($statsClientes['capital_variable'] ?? 0); ?></span>
-                        </div>
-                    </div>
-
-                    <!-- Gráfico de Rentabilidad Semanal -->
-                    <div class="chart-card">
-                        <div class="chart-title">Rentabilidad Semanal</div>
-                        <div class="line-chart">
-                            <div class="chart-y-axis">
-                                <span>18%</span>
-                                <span>12%</span>
-                                <span>6%</span>
-                                <span>0%</span>
-                            </div>
-                            <div class="chart-grid">
-                                <div class="chart-grid-line"></div>
-                                <div class="chart-grid-line"></div>
-                                <div class="chart-grid-line"></div>
-                                <div class="chart-grid-line"></div>
-                            </div>
-                            <div class="chart-bars-container">
-                                <?php foreach ($rentabilidadSemanal as $renta): ?>
-                                <div class="chart-bar-item">
-                                    <div class="chart-bar-wrapper">
-                                        <div class="chart-bar green" style="height: <?php echo ($renta['porcentaje'] / 18) * 100; ?>px;"></div>
-                                    </div>
-                                    <div class="chart-bar-label">Sem <?php echo $renta['semana']; ?></div>
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                        <div class="chart-legend">
-                            <div class="chart-legend-item">
-                                <div class="chart-legend-color" style="background: var(--blue-accent);"></div>
-                                <span>Rentabilidad Fija</span>
-                            </div>
-                            <div class="chart-legend-item">
-                                <div class="chart-legend-color" style="background: var(--green-accent);"></div>
-                                <span>Rentabilidad Variable</span>
-                            </div>
                         </div>
                     </div>
 
@@ -268,5 +510,75 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
         </main>
     </div>
 
+    <script>
+        // Gráfico de Rentabilidad Media Semanal
+        const ctx = document.getElementById('rentabilidadChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: <?php echo json_encode(array_column($semanasGrafico, 'label')); ?>,
+                datasets: [{
+                    label: 'Rentabilidad Media',
+                    data: <?php echo json_encode(array_column($semanasGrafico, 'media')); ?>,
+                    borderColor: '#d4a84b',
+                    backgroundColor: 'rgba(212, 168, 75, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#d4a84b',
+                    pointBorderColor: '#000',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                        titleColor: '#fff',
+                        bodyColor: '#d4a84b',
+                        borderColor: 'rgba(212, 168, 75, 0.3)',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#888'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        max: 20,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#888',
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html>

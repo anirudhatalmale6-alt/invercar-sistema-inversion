@@ -69,6 +69,25 @@ CREATE TABLE IF NOT EXISTS `rentabilidad_semanal` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
+-- Tabla: rentabilidad_historico (histórico global de rentabilidad semanal)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `rentabilidad_historico` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `semana` TINYINT UNSIGNED NOT NULL COMMENT 'Número de semana del año (1-52)',
+  `anio` YEAR NOT NULL,
+  `tipo` ENUM('fija', 'variable') NOT NULL,
+  `porcentaje` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `rentabilidad_generada` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Rentabilidad absoluta generada en euros',
+  `capital_base` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital invertido esa semana',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `semana_anio_tipo` (`semana`, `anio`, `tipo`),
+  KEY `idx_tipo` (`tipo`),
+  KEY `idx_anio_semana` (`anio`, `semana`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
 -- Tabla: vehiculos
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `vehiculos` (

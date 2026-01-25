@@ -265,7 +265,7 @@ a {
     gap: 8px;
     padding: 8px 12px;
     background: transparent;
-    border: 1px solid var(--border-color);
+    border: none;
     border-radius: 6px;
     color: var(--text-muted);
     font-size: 0.8rem;
@@ -274,7 +274,6 @@ a {
 }
 
 .logout-btn:hover {
-    border-color: var(--danger);
     color: var(--danger);
     background: rgba(239, 68, 68, 0.1);
 }
