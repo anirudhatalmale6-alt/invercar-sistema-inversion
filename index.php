@@ -14,6 +14,7 @@ try {
         'capital_total' => 0,
         'fondos_disponibles' => 0,
         'rentabilidad_actual' => 0,
+        'rentabilidad_anual' => 0,
         'capital_invertido_vehiculos' => 0,
     ];
 }
@@ -82,9 +83,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
     <!-- Hero Section -->
     <section class="hero" id="inicio">
         <div class="hero-content">
-            <h1>Maximiza tus Inversiones con <span>Nosotros</span></h1>
-            <p>Obtén la mejor rentabilidad con nuestro sistema de inversión avanzado en el sector automovilístico.</p>
-            <a href="cliente/registro.php" class="btn btn-primary">Empieza a Invertir</a>
+            <h1>Buena rentabilidad garantizada a través de la <span>compra de bienes</span> (sector automoción)</h1>
+            <p>Nosotros nos encargamos de escoger las mejores operaciones para que obtengas una gran rentabilidad sin ningún tipo de riesgo</p>
+            <a href="#como-funciona" class="btn btn-primary">Saber Más</a>
         </div>
     </section>
 
@@ -93,9 +94,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         <div class="container">
             <div class="stats-grid">
                 <div class="stat-card">
-                    <h3>Rentabilidad Actual</h3>
-                    <div class="value"><?php echo formatPercent($stats['rentabilidad_actual']); ?></div>
-                    <div class="label">Rendimiento Mensual</div>
+                    <h3>Capital Disponible</h3>
+                    <div class="value"><?php echo formatMoney($stats['fondos_disponibles']); ?></div>
+                    <div class="label">Fondos Disponibles</div>
                 </div>
                 <div class="stat-card">
                     <h3>Clientes Actuales</h3>
@@ -103,9 +104,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     <div class="label">Inversionistas Activos</div>
                 </div>
                 <div class="stat-card">
-                    <h3>Capital Disponible</h3>
-                    <div class="value"><?php echo formatMoney($stats['fondos_disponibles']); ?></div>
-                    <div class="label">Fondos Disponibles</div>
+                    <h3>Rentabilidad Actual</h3>
+                    <div class="value"><?php echo formatPercent($stats['rentabilidad_anual']); ?></div>
+                    <div class="label">Rendimiento Anual</div>
                 </div>
             </div>
         </div>

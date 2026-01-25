@@ -116,6 +116,23 @@ function getEstadisticasSistema() {
     $fondosDisponibles = $capitalTotal - $capitalEnVehiculos;
     if ($fondosDisponibles < 0) $fondosDisponibles = 0;
 
+    // Calcular rentabilidad anual basada en vehículos vendidos
+    // Fórmula: (beneficio total / inversión total) * 100, anualizado
+    $stmt = $db->query("SELECT SUM(precio_venta_real - precio_compra - gastos) as beneficio, SUM(precio_compra + gastos) as inversion FROM vehiculos WHERE estado = 'vendido' AND precio_venta_real > 0");
+    $ventasData = $stmt->fetch();
+    $beneficioTotal = $ventasData['beneficio'] ?? 0;
+    $inversionTotal = $ventasData['inversion'] ?? 0;
+
+    // Rentabilidad anual = (beneficio / inversión) * 100
+    // Si no hay datos, usar el valor de configuración
+    $rentabilidadAnual = 0;
+    if ($inversionTotal > 0 && $beneficioTotal > 0) {
+        $rentabilidadAnual = ($beneficioTotal / $inversionTotal) * 100;
+    } else {
+        // Valor por defecto de configuración (si es mensual, multiplicar por 12)
+        $rentabilidadAnual = $rentabilidadVariable * 12;
+    }
+
     return [
         'clientes_totales' => $clientesActivos,
         'capital_total' => $capitalTotal,
@@ -126,6 +143,7 @@ function getEstadisticasSistema() {
         'capital_reserva' => $capitalReserva,
         'fondos_disponibles' => $fondosDisponibles,
         'rentabilidad_actual' => $rentabilidadVariable,
+        'rentabilidad_anual' => $rentabilidadAnual,
     ];
 }
 
