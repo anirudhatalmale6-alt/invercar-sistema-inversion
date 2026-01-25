@@ -10,7 +10,7 @@ if (!defined('INVERCAR')) {
 }
 
 // Configuración de Base de Datos
-define('DB_HOST', 'localhost');
+define('DB_HOST', 'PMYSQL126.dns-servicio.com');
 define('DB_NAME', '8542231_InverCar');
 define('DB_USER', 'AlbRod');
 define('DB_PASS', 'AlbRodRod*2026');
