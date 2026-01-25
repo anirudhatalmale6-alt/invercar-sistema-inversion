@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="auth-container">
         <div class="auth-box">
             <div class="auth-header">
-                <a href="../index.php" class="logo">Inver<span>Car</span></a>
+                <a href="../index.php" class="logo"><img src="../assets/images/logo-invercar.png" alt="InverCar" style="height: 60px;"></a>
                 <div class="admin-badge">ADMINISTRACIÓN</div>
                 <p>Panel de gestión interna</p>
             </div>
