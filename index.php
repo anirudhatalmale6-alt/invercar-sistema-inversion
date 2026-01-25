@@ -162,34 +162,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         </div>
     </section>
 
-    <!-- Data Section -->
-    <section class="data-section">
-        <div class="container">
-            <div class="section-title">
-                <h2>Datos del Sistema</h2>
-                <p>Información en tiempo real desde nuestra base de datos.</p>
-            </div>
-            <div class="data-grid">
-                <div class="data-item">
-                    <div class="label">Clientes Totales</div>
-                    <div class="value"><?php echo number_format($stats['clientes_totales'], 0, ',', '.'); ?></div>
-                </div>
-                <div class="data-item">
-                    <div class="label">Fondos Usados</div>
-                    <div class="value"><?php echo formatMoney($stats['capital_invertido_vehiculos']); ?></div>
-                </div>
-                <div class="data-item">
-                    <div class="label">Capital Disponible</div>
-                    <div class="value"><?php echo formatMoney($stats['fondos_disponibles']); ?></div>
-                </div>
-                <div class="data-item">
-                    <div class="label">Capital Total</div>
-                    <div class="value"><?php echo formatMoney($stats['capital_total']); ?></div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- How It Works Section - Explanation -->
     <section class="how-it-works" id="como-funciona">
         <div class="container">
