@@ -172,6 +172,23 @@ a {
     max-width: 40vw;
 }
 
+/* Hero Car Image */
+.hero-car {
+    position: absolute;
+    bottom: 5%;
+    right: 5%;
+    z-index: 2;
+    opacity: 0.85;
+}
+
+.hero-car img {
+    width: 550px;
+    height: auto;
+    max-width: 45vw;
+    object-fit: contain;
+    filter: drop-shadow(0 20px 40px rgba(0,0,0,0.5));
+}
+
 /* Minimal Chart - Raleway Style */
 .minimal-chart {
     position: absolute;
@@ -361,11 +378,22 @@ a {
 .data-section {
     padding: 80px 0;
     background:
-        linear-gradient(180deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.95) 100%),
-        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600"><defs><linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23d4a84b" stop-opacity="0.3"/><stop offset="100%" stop-color="%23b8922f" stop-opacity="0.1"/></linearGradient><linearGradient id="barGrad2" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="%23d4a84b" stop-opacity="0.1"/><stop offset="100%" stop-color="%23d4a84b" stop-opacity="0.4"/></linearGradient></defs><rect fill="%23000" width="1200" height="600"/><!-- Stacked Coins Left --><g opacity="0.4" transform="translate(80,300)"><ellipse cx="60" cy="0" rx="60" ry="15" fill="%23d4a84b" opacity="0.3"/><ellipse cx="60" cy="-20" rx="60" ry="15" fill="%23d4a84b" opacity="0.35"/><ellipse cx="60" cy="-40" rx="60" ry="15" fill="%23d4a84b" opacity="0.4"/><ellipse cx="60" cy="-60" rx="60" ry="15" fill="%23d4a84b" opacity="0.45"/><ellipse cx="60" cy="-80" rx="60" ry="15" fill="%23d4a84b" opacity="0.5"/></g><!-- Rising Bar Chart Right --><g opacity="0.3" transform="translate(900,150)"><rect x="0" y="200" width="40" height="150" fill="url(%23barGrad2)"/><rect x="60" y="150" width="40" height="200" fill="url(%23barGrad2)"/><rect x="120" y="100" width="40" height="250" fill="url(%23barGrad2)"/><rect x="180" y="50" width="40" height="300" fill="url(%23barGrad2)"/></g><!-- Euro Symbol --><g opacity="0.15" transform="translate(600,200)"><text font-family="Arial" font-size="200" fill="%23d4a84b">€</text></g><!-- Pie Chart Segments --><g opacity="0.2" transform="translate(200,450)"><circle cx="0" cy="0" r="80" fill="none" stroke="%23d4a84b" stroke-width="30" stroke-dasharray="125 377" transform="rotate(-90)"/><circle cx="0" cy="0" r="80" fill="none" stroke="%23e8c068" stroke-width="30" stroke-dasharray="100 402" stroke-dashoffset="-125" transform="rotate(-90)"/></g><!-- Growth Arrow --><g opacity="0.25" transform="translate(700,100)"><path d="M0,150 L100,100 L200,120 L300,50 L350,60" stroke="%23d4a84b" stroke-width="4" fill="none"/><polygon points="350,40 380,60 350,80" fill="%23d4a84b"/></g></svg>');
+        linear-gradient(180deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.92) 100%),
+        url('../images/fondo-2.jpg');
     background-size: cover;
     background-position: center;
+    background-attachment: fixed;
     position: relative;
+}
+
+/* Rentabilidad Section - Different background */
+.data-section#rentabilidad-actual {
+    background:
+        linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.9) 100%),
+        url('../images/fondo-1.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
 }
 
 .section-title {
@@ -477,10 +505,11 @@ a {
 .how-it-works {
     padding: 80px 0;
     background:
-        linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(5,5,5,0.95) 100%),
-        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500"><defs><linearGradient id="profitLine" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="%23d4a84b" stop-opacity="0"/><stop offset="50%" stop-color="%23d4a84b" stop-opacity="0.5"/><stop offset="100%" stop-color="%23d4a84b" stop-opacity="0"/></linearGradient></defs><rect fill="%23000" width="1200" height="500"/><!-- Candlestick Chart Pattern --><g opacity="0.25" transform="translate(50,100)"><rect x="20" y="80" width="8" height="120" fill="%23d4a84b"/><line x1="24" y1="60" x2="24" y2="220" stroke="%23d4a84b" stroke-width="2"/><rect x="60" y="100" width="8" height="80" fill="%23d4a84b"/><line x1="64" y1="80" x2="64" y2="200" stroke="%23d4a84b" stroke-width="2"/><rect x="100" y="60" width="8" height="100" fill="%23d4a84b"/><line x1="104" y1="40" x2="104" y2="180" stroke="%23d4a84b" stroke-width="2"/><rect x="140" y="40" width="8" height="120" fill="%23d4a84b"/><line x1="144" y1="20" x2="144" y2="180" stroke="%23d4a84b" stroke-width="2"/></g><!-- Dollar Signs Floating --><g opacity="0.1"><text x="800" y="150" font-family="Arial" font-size="80" fill="%23d4a84b">$</text><text x="950" y="300" font-family="Arial" font-size="60" fill="%23d4a84b">$</text><text x="1050" y="180" font-family="Arial" font-size="50" fill="%23d4a84b">$</text></g><!-- Percentage Growth --><g opacity="0.15" transform="translate(900,350)"><text font-family="Arial" font-size="100" font-weight="bold" fill="%23d4a84b">+%%</text></g><!-- Circular Progress --><g opacity="0.2" transform="translate(1000,100)"><circle cx="0" cy="0" r="60" fill="none" stroke="%23333" stroke-width="8"/><circle cx="0" cy="0" r="60" fill="none" stroke="%23d4a84b" stroke-width="8" stroke-dasharray="282" stroke-dashoffset="70" transform="rotate(-90)"/></g><!-- Connecting Lines --><g opacity="0.15"><line x1="200" y1="400" x2="400" y2="350" stroke="url(%23profitLine)" stroke-width="2"/><line x1="400" y1="350" x2="600" y2="380" stroke="url(%23profitLine)" stroke-width="2"/><line x1="600" y1="380" x2="800" y2="300" stroke="url(%23profitLine)" stroke-width="2"/><line x1="800" y1="300" x2="1000" y2="250" stroke="url(%23profitLine)" stroke-width="2"/></g><!-- Gold Bars Bottom Right --><g opacity="0.2" transform="translate(1000,380)"><rect x="0" y="0" width="60" height="25" fill="%23d4a84b" rx="3"/><rect x="10" y="-30" width="60" height="25" fill="%23e8c068" rx="3"/><rect x="20" y="-60" width="60" height="25" fill="%23d4a84b" rx="3"/></g></svg>');
+        linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.9) 100%),
+        url('../images/fondo-3.jpg');
     background-size: cover;
     background-position: center;
+    background-attachment: fixed;
 }
 
 .steps-grid {

@@ -96,6 +96,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
             <div class="hero-logo-bg">
                 <img src="assets/images/logo-invercar.png" alt="InverCar">
             </div>
+            <div class="hero-car">
+                <img src="assets/images/coche-hero.jpg" alt="Vehículo de inversión">
+            </div>
             <div class="hero-glow"></div>
             <!-- Minimal Chart -->
             <div class="minimal-chart">
