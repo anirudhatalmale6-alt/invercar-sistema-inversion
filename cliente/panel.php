@@ -116,7 +116,7 @@ foreach ($rentabilidad as $r) {
 
         .info-card {
             background: var(--card-bg);
-            border-radius: 15px;
+            border-radius: 0;
             padding: 25px;
             border: 1px solid var(--border-color);
         }
@@ -154,7 +154,7 @@ foreach ($rentabilidad as $r) {
 
         .chart-section {
             background: var(--card-bg);
-            border-radius: 15px;
+            border-radius: 0;
             padding: 30px;
             border: 1px solid var(--border-color);
             margin-bottom: 30px;
@@ -185,7 +185,7 @@ foreach ($rentabilidad as $r) {
             width: 100%;
             max-width: 50px;
             background: linear-gradient(to top, var(--primary-color), var(--primary-dark));
-            border-radius: 8px 8px 0 0;
+            border-radius: 0;
             min-height: 20px;
             transition: height 0.5s ease;
         }
@@ -208,7 +208,7 @@ foreach ($rentabilidad as $r) {
         .tipo-badge {
             display: inline-block;
             padding: 5px 15px;
-            border-radius: 20px;
+            border-radius: 0;
             font-size: 0.85rem;
             font-weight: 600;
         }
@@ -225,7 +225,7 @@ foreach ($rentabilidad as $r) {
 
         .profile-section {
             background: var(--card-bg);
-            border-radius: 15px;
+            border-radius: 0;
             padding: 30px;
             border: 1px solid var(--border-color);
         }

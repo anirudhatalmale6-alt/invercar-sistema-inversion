@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .auth-box {
             background: var(--card-bg);
-            border-radius: 15px;
+            border-radius: 0;
             padding: 40px;
             width: 100%;
             max-width: 450px;
@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .password-strength {
             height: 4px;
-            border-radius: 2px;
+            border-radius: 0;
             margin-top: 8px;
             transition: all 0.3s;
         }

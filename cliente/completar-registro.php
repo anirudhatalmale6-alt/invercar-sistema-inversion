@@ -143,7 +143,7 @@ $provincias = [
         }
         .auth-box {
             background: var(--card-bg);
-            border-radius: 15px;
+            border-radius: 0;
             padding: 40px;
             width: 100%;
             max-width: 600px;
@@ -174,7 +174,7 @@ $provincias = [
         .investment-option {
             background: var(--dark-bg);
             border: 2px solid var(--border-color);
-            border-radius: 10px;
+            border-radius: 0;
             padding: 20px;
             text-align: center;
             cursor: pointer;
@@ -207,7 +207,7 @@ $provincias = [
             width: 80px;
             height: 80px;
             background: var(--success);
-            border-radius: 50%;
+            border-radius: 0;
             display: flex;
             align-items: center;
             justify-content: center;

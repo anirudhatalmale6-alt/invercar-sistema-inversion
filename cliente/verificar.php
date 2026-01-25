@@ -74,7 +74,7 @@ if (empty($token)) {
         }
         .auth-box {
             background: var(--card-bg);
-            border-radius: 15px;
+            border-radius: 0;
             padding: 40px;
             width: 100%;
             max-width: 500px;
@@ -92,7 +92,7 @@ if (empty($token)) {
             width: 80px;
             height: 80px;
             background: var(--success);
-            border-radius: 50%;
+            border-radius: 0;
             display: flex;
             align-items: center;
             justify-content: center;

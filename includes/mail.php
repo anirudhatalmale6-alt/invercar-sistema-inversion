@@ -21,11 +21,11 @@ function enviarEmailVerificacion($email, $nombre, $token) {
     <head>
         <style>
             body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; padding: 40px; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 0; padding: 40px; }
             .header { text-align: center; margin-bottom: 30px; }
             .logo { font-size: 28px; font-weight: bold; color: #1a2332; }
             .logo span { color: #0d9b5c; }
-            .btn { display: inline-block; background: #0d9b5c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; }
+            .btn { display: inline-block; background: #0d9b5c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 0; font-weight: bold; }
             .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
         </style>
     </head>
@@ -90,11 +90,11 @@ function enviarEmailRecuperacion($email, $nombre, $token) {
     <head>
         <style>
             body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; padding: 40px; }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 0; padding: 40px; }
             .header { text-align: center; margin-bottom: 30px; }
             .logo { font-size: 28px; font-weight: bold; color: #1a2332; }
             .logo span { color: #0d9b5c; }
-            .btn { display: inline-block; background: #0d9b5c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; }
+            .btn { display: inline-block; background: #0d9b5c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 0; font-weight: bold; }
             .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
         </style>
     </head>

@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .auth-box {
             background: var(--card-bg);
-            border-radius: 15px;
+            border-radius: 0;
             padding: 40px;
             width: 100%;
             max-width: 400px;
