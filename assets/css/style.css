@@ -29,6 +29,11 @@ body {
     line-height: 1.6;
 }
 
+/* Ensure all form elements inherit Raleway font */
+input, textarea, select, button {
+    font-family: 'Raleway', sans-serif;
+}
+
 a {
     text-decoration: none;
     color: inherit;
@@ -600,6 +605,7 @@ a {
     margin-bottom: 8px;
     font-weight: 500;
     font-family: 'Raleway', sans-serif;
+    letter-spacing: 0.5px;
 }
 
 .form-group input,
@@ -612,8 +618,16 @@ a {
     background: var(--dark-bg);
     color: var(--text-light);
     font-size: 1rem;
-    font-family: 'Raleway', sans-serif;
+    font-family: 'Raleway', sans-serif !important;
+    letter-spacing: 0.3px;
     transition: border-color 0.3s;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    font-family: 'Raleway', sans-serif;
+    color: var(--text-muted);
+    opacity: 0.7;
 }
 
 .form-group input:focus,
