@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     <li><a href="#inicio" class="active">Inicio</a></li>
                     <li><a href="#como-funciona">Cómo Funciona</a></li>
                     <li><a href="#como-invertir">Cómo Invertir</a></li>
-                    <li><a href="#servicios">Servicios</a></li>
+                    <li><a href="#rentabilidad-actual">Rentabilidad Actual</a></li>
                     <li><a href="#contacto">Contacto</a></li>
                     <li><a href="cliente/login.php">Acceso Clientes</a></li>
                 </ul>
@@ -253,11 +253,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         </div>
     </section>
 
-    <!-- Services Section -->
-    <section class="data-section" id="servicios">
+    <!-- Rentabilidad Actual Section -->
+    <section class="data-section" id="rentabilidad-actual">
         <div class="container">
             <div class="section-title">
-                <h2>Nuestros Servicios</h2>
+                <h2>Rentabilidad Actual</h2>
                 <p>Dos opciones de inversión adaptadas a tus necesidades</p>
             </div>
             <div class="stats-grid">
