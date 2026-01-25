@@ -10,13 +10,19 @@ if (!isAdminLogueado()) {
 
 $db = getDB();
 
-// Estadísticas generales
+// Estadísticas generales de clientes
 $statsClientes = $db->query("
     SELECT
         COUNT(*) as total,
-        SUM(capital_invertido) as capital_total,
-        SUM(CASE WHEN tipo_inversion = 'fija' THEN capital_invertido ELSE 0 END) as capital_fija,
-        SUM(CASE WHEN tipo_inversion = 'variable' THEN capital_invertido ELSE 0 END) as capital_variable,
+        COALESCE(SUM(capital_total), 0) as capital_total,
+        COALESCE(SUM(capital_invertido), 0) as capital_invertido,
+        COALESCE(SUM(capital_reserva), 0) as capital_reserva,
+        COALESCE(SUM(CASE WHEN tipo_inversion = 'fija' THEN capital_total ELSE 0 END), 0) as capital_fija,
+        COALESCE(SUM(CASE WHEN tipo_inversion = 'variable' THEN capital_total ELSE 0 END), 0) as capital_variable,
+        COALESCE(SUM(CASE WHEN tipo_inversion = 'fija' THEN capital_invertido ELSE 0 END), 0) as invertido_fija,
+        COALESCE(SUM(CASE WHEN tipo_inversion = 'variable' THEN capital_invertido ELSE 0 END), 0) as invertido_variable,
+        COALESCE(SUM(CASE WHEN tipo_inversion = 'fija' THEN capital_reserva ELSE 0 END), 0) as reserva_fija,
+        COALESCE(SUM(CASE WHEN tipo_inversion = 'variable' THEN capital_reserva ELSE 0 END), 0) as reserva_variable,
         SUM(CASE WHEN tipo_inversion = 'fija' THEN 1 ELSE 0 END) as clientes_fija,
         SUM(CASE WHEN tipo_inversion = 'variable' THEN 1 ELSE 0 END) as clientes_variable
     FROM clientes WHERE activo = 1 AND registro_completo = 1
@@ -27,8 +33,8 @@ $statsVehiculos = $db->query("
         COUNT(*) as total,
         SUM(CASE WHEN estado = 'en_venta' THEN 1 ELSE 0 END) as en_venta,
         SUM(CASE WHEN estado = 'vendido' THEN 1 ELSE 0 END) as vendidos,
-        SUM(precio_compra + gastos) as capital_invertido,
-        SUM(CASE WHEN estado IN ('en_venta', 'reservado') THEN valor_venta_previsto ELSE 0 END) as valor_previsto
+        COALESCE(SUM(CASE WHEN estado IN ('en_venta', 'reservado') THEN precio_compra + gastos ELSE 0 END), 0) as capital_invertido_vehiculos,
+        COALESCE(SUM(CASE WHEN estado IN ('en_venta', 'reservado') THEN valor_venta_previsto ELSE 0 END), 0) as valor_previsto
     FROM vehiculos
 ")->fetch();
 
@@ -354,10 +360,10 @@ $ultimosClientes = $db->query("
                 </div>
             </div>
 
-            <!-- Gráfico de Rentabilidad Media Semanal -->
+            <!-- Gráfico de Rentabilidad Media por Semana -->
             <div class="card" style="margin-bottom: 25px;">
                 <div class="card-header">
-                    <h2>Rentabilidad Media Semanal</h2>
+                    <h2>Rentabilidad Media por Semana</h2>
                     <span style="color: var(--text-muted); font-size: 0.85rem;">Últimas 9 semanas</span>
                 </div>
                 <div class="card-body">
@@ -466,14 +472,15 @@ $ultimosClientes = $db->query("
 
                 <!-- Panel Lateral -->
                 <div class="dashboard-sidebar">
-                    <!-- Capital Acumulado -->
+                    <!-- Capital -->
                     <div class="stat-panel">
                         <div class="stat-panel-header">
                             <div class="stat-panel-icon">€</div>
-                            <div class="stat-panel-title">Capital Acumulado</div>
+                            <div class="stat-panel-title">Capital</div>
                         </div>
                         <div class="stat-panel-value"><?php echo formatMoney($statsClientes['capital_total'] ?? 0); ?></div>
 
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Por tipo de inversión</div>
                         <div class="stat-panel-row">
                             <span class="stat-panel-label fija">Rentabilidad Fija</span>
                             <span class="stat-panel-amount fija"><?php echo formatMoney($statsClientes['capital_fija'] ?? 0); ?></span>
@@ -481,6 +488,22 @@ $ultimosClientes = $db->query("
                         <div class="stat-panel-row">
                             <span class="stat-panel-label variable">Rentabilidad Variable</span>
                             <span class="stat-panel-amount variable"><?php echo formatMoney($statsClientes['capital_variable'] ?? 0); ?></span>
+                        </div>
+
+                        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Estado del capital</div>
+                        <div class="stat-panel-row">
+                            <span class="stat-panel-label" style="color: var(--green-accent);">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green-accent); margin-right:8px;"></span>
+                                Capital Invertido
+                            </span>
+                            <span class="stat-panel-amount" style="color: var(--green-accent);"><?php echo formatMoney($statsVehiculos['capital_invertido_vehiculos'] ?? 0); ?></span>
+                        </div>
+                        <div class="stat-panel-row">
+                            <span class="stat-panel-label" style="color: var(--gold);">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--gold); margin-right:8px;"></span>
+                                Capital en Reserva
+                            </span>
+                            <span class="stat-panel-amount" style="color: var(--gold);"><?php echo formatMoney(max(0, ($statsClientes['capital_total'] ?? 0) - ($statsVehiculos['capital_invertido_vehiculos'] ?? 0))); ?></span>
                         </div>
                     </div>
 
@@ -511,45 +534,86 @@ $ultimosClientes = $db->query("
     </div>
 
     <script>
-        // Gráfico de Rentabilidad Media Semanal
+        // Gráfico de Rentabilidad Media por Semana
         const ctx = document.getElementById('rentabilidadChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
                 labels: <?php echo json_encode(array_column($semanasGrafico, 'label')); ?>,
-                datasets: [{
-                    label: 'Rentabilidad Media',
-                    data: <?php echo json_encode(array_column($semanasGrafico, 'media')); ?>,
-                    borderColor: '#d4a84b',
-                    backgroundColor: 'rgba(212, 168, 75, 0.1)',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.4,
-                    pointBackgroundColor: '#d4a84b',
-                    pointBorderColor: '#000',
-                    pointBorderWidth: 2,
-                    pointRadius: 5,
-                    pointHoverRadius: 7
-                }]
+                datasets: [
+                    {
+                        label: 'Rentabilidad Fija',
+                        data: <?php echo json_encode(array_column($semanasGrafico, 'fija')); ?>,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4,
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#000',
+                        pointBorderWidth: 1,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Rentabilidad Variable',
+                        data: <?php echo json_encode(array_column($semanasGrafico, 'variable')); ?>,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.4,
+                        pointBackgroundColor: '#22c55e',
+                        pointBorderColor: '#000',
+                        pointBorderWidth: 1,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    },
+                    {
+                        label: 'Media',
+                        data: <?php echo json_encode(array_column($semanasGrafico, 'media')); ?>,
+                        borderColor: '#d4a84b',
+                        backgroundColor: 'rgba(212, 168, 75, 0.15)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#d4a84b',
+                        pointBorderColor: '#000',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }
+                ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 plugins: {
                     legend: {
-                        display: false
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: '#888',
+                            usePointStyle: true,
+                            padding: 20,
+                            font: { size: 11 }
+                        }
                     },
                     tooltip: {
                         backgroundColor: 'rgba(20, 20, 20, 0.95)',
                         titleColor: '#fff',
-                        bodyColor: '#d4a84b',
+                        bodyColor: '#ccc',
                         borderColor: 'rgba(212, 168, 75, 0.3)',
                         borderWidth: 1,
                         padding: 12,
-                        displayColors: false,
+                        displayColors: true,
                         callbacks: {
                             label: function(context) {
-                                return context.parsed.y.toFixed(1) + '%';
+                                return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
                             }
                         }
                     }

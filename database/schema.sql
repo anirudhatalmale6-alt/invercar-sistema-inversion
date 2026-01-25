@@ -40,7 +40,9 @@ CREATE TABLE IF NOT EXISTS `clientes` (
   `provincia` VARCHAR(100) DEFAULT NULL,
   `pais` VARCHAR(100) DEFAULT 'España',
   `telefono` VARCHAR(20) DEFAULT NULL,
-  `capital_invertido` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `capital_total` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital total aportado por el cliente',
+  `capital_invertido` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital actualmente invertido en vehículos',
+  `capital_reserva` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital pendiente de invertir (en reserva)',
   `tipo_inversion` ENUM('fija', 'variable') DEFAULT NULL,
   `registro_completo` TINYINT(1) NOT NULL DEFAULT 0,
   `activo` TINYINT(1) NOT NULL DEFAULT 1,
@@ -92,6 +94,7 @@ CREATE TABLE IF NOT EXISTS `rentabilidad_historico` (
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `vehiculos` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `matricula` VARCHAR(20) DEFAULT NULL COMMENT 'Matrícula del vehículo (opcional)',
   `marca` VARCHAR(50) NOT NULL,
   `modelo` VARCHAR(100) NOT NULL,
   `version` VARCHAR(100) DEFAULT NULL,
@@ -115,7 +118,32 @@ CREATE TABLE IF NOT EXISTS `vehiculos` (
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_estado` (`estado`),
-  KEY `idx_marca` (`marca`)
+  KEY `idx_marca` (`marca`),
+  KEY `idx_matricula` (`matricula`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Tabla: inversiones_vehiculo (vincula capital de clientes con vehículos)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `inversiones_vehiculo` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `vehiculo_id` INT UNSIGNED NOT NULL,
+  `cliente_id` INT UNSIGNED NOT NULL,
+  `importe_invertido` DECIMAL(15,2) NOT NULL COMMENT 'Cantidad del capital del cliente invertida en este vehículo',
+  `porcentaje_participacion` DECIMAL(5,2) NOT NULL COMMENT 'Porcentaje de participación en el vehículo',
+  `tipo_inversion` ENUM('fija', 'variable') NOT NULL,
+  `fecha_inversion` DATE NOT NULL,
+  `fecha_desinversion` DATE DEFAULT NULL COMMENT 'Fecha cuando se vendió el vehículo y se liberó el capital',
+  `rentabilidad_obtenida` DECIMAL(15,2) DEFAULT NULL COMMENT 'Rentabilidad obtenida tras venta',
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_vehiculo` (`vehiculo_id`),
+  KEY `idx_cliente` (`cliente_id`),
+  KEY `idx_activo` (`activo`),
+  CONSTRAINT `fk_inversion_vehiculo` FOREIGN KEY (`vehiculo_id`) REFERENCES `vehiculos` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_inversion_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

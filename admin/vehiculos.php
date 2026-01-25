@@ -21,6 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'crear' || $action === 'editar') {
             $id = intval($_POST['id'] ?? 0);
+            $matricula = cleanInput($_POST['matricula'] ?? '');
             $marca = cleanInput($_POST['marca'] ?? '');
             $modelo = cleanInput($_POST['modelo'] ?? '');
             $version = cleanInput($_POST['version'] ?? '');
@@ -33,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fecha_compra = !empty($_POST['fecha_compra']) ? $_POST['fecha_compra'] : null;
             $fecha_venta = !empty($_POST['fecha_venta']) ? $_POST['fecha_venta'] : null;
             $notas = cleanInput($_POST['notas'] ?? '');
+            $matricula = !empty($matricula) ? $matricula : null;
 
             // Validaciones
             if (empty($marca) || empty($modelo) || $precio_compra <= 0) {
@@ -59,10 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 try {
                     if ($action === 'crear') {
-                        $sql = "INSERT INTO vehiculos (marca, modelo, version, anio, precio_compra, gastos, valor_venta_previsto, precio_venta_real, estado, fecha_compra, fecha_venta, notas, foto)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $sql = "INSERT INTO vehiculos (matricula, marca, modelo, version, anio, precio_compra, gastos, valor_venta_previsto, precio_venta_real, estado, fecha_compra, fecha_venta, notas, foto)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$marca, $modelo, $version, $anio, $precio_compra, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto]);
+                        $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $precio_compra, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto]);
                         $exito = 'Vehículo creado correctamente.';
                     } else {
                         // Obtener foto actual si no se sube nueva
@@ -73,9 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $foto = $actual['foto'] ?? null;
                         }
 
-                        $sql = "UPDATE vehiculos SET marca=?, modelo=?, version=?, anio=?, precio_compra=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, fecha_compra=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
+                        $sql = "UPDATE vehiculos SET matricula=?, marca=?, modelo=?, version=?, anio=?, precio_compra=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, fecha_compra=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$marca, $modelo, $version, $anio, $precio_compra, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto, $id]);
+                        $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $precio_compra, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto, $id]);
                         $exito = 'Vehículo actualizado correctamente.';
                     }
                 } catch (Exception $e) {
@@ -183,6 +185,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                     <tr>
                                         <th>Foto</th>
                                         <th>Vehículo</th>
+                                        <th>Matrícula</th>
                                         <th>Año</th>
                                         <th>Precio Compra</th>
                                         <th>Gastos</th>
@@ -208,6 +211,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                                 <br><small style="color: var(--text-muted);"><?php echo escape($v['version']); ?></small>
                                             <?php endif; ?>
                                         </td>
+                                        <td><?php echo $v['matricula'] ? escape($v['matricula']) : '<span style="color:var(--text-muted);">-</span>'; ?></td>
                                         <td><?php echo escape($v['anio']); ?></td>
                                         <td><?php echo formatMoney($v['precio_compra']); ?></td>
                                         <td><?php echo formatMoney($v['gastos']); ?></td>
@@ -290,10 +294,16 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                    value="<?php echo escape($vehiculoEditar['version'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
-                            <label>Año *</label>
-                            <input type="number" name="anio" required min="1990" max="2030"
-                                   value="<?php echo escape($vehiculoEditar['anio'] ?? date('Y')); ?>">
+                            <label>Matrícula</label>
+                            <input type="text" name="matricula" placeholder="Ej: 1234 ABC"
+                                   value="<?php echo escape($vehiculoEditar['matricula'] ?? ''); ?>">
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Año *</label>
+                        <input type="number" name="anio" required min="1990" max="2030" style="max-width: 150px;"
+                               value="<?php echo escape($vehiculoEditar['anio'] ?? date('Y')); ?>">
                     </div>
 
                     <div class="form-row">
