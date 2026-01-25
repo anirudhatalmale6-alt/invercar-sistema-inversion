@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         <div class="container">
             <a href="index.php" class="logo">
                 <img src="assets/images/logo-invercar.png" alt="InverCar" class="logo-full">
-                <img src="assets/images/logo-invercar-text.svg" alt="InverCar" class="logo-text">
+                <img src="assets/images/logo-invercar-text.png" alt="InverCar" class="logo-text">
             </a>
             <nav class="nav">
                 <ul>
