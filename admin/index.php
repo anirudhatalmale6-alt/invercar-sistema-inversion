@@ -33,6 +33,57 @@ $statsVehiculos = $db->query("
 // Capital en reserva
 $capitalReserva = floatval(getConfig('capital_reserva', 0));
 
+// Estadísticas últimos 3 meses
+$estadisticasMensuales = [];
+$mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+for ($i = 2; $i >= 0; $i--) {
+    $fecha = date('Y-m', strtotime("-$i months"));
+    $mesNum = intval(date('m', strtotime("-$i months")));
+    $anio = date('Y', strtotime("-$i months"));
+    $mesNombre = $mesesNombres[$mesNum - 1];
+
+    // Nuevos clientes del mes
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as nuevos, SUM(capital_invertido) as capital_nuevo
+        FROM clientes
+        WHERE activo = 1 AND registro_completo = 1
+        AND DATE_FORMAT(created_at, '%Y-%m') = ?
+    ");
+    $stmt->execute([$fecha]);
+    $clientesMes = $stmt->fetch();
+
+    // Vehículos comprados en el mes
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as comprados, SUM(precio_compra) as total_compra
+        FROM vehiculos
+        WHERE DATE_FORMAT(fecha_compra, '%Y-%m') = ? OR DATE_FORMAT(created_at, '%Y-%m') = ?
+    ");
+    $stmt->execute([$fecha, $fecha]);
+    $vehiculosComprados = $stmt->fetch();
+
+    // Vehículos vendidos en el mes
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as vendidos, SUM(precio_venta_real) as total_venta, SUM(beneficio) as beneficio_total
+        FROM vehiculos
+        WHERE estado = 'vendido' AND DATE_FORMAT(fecha_venta, '%Y-%m') = ?
+    ");
+    $stmt->execute([$fecha]);
+    $vehiculosVendidos = $stmt->fetch();
+
+    $estadisticasMensuales[] = [
+        'mes' => $mesNombre . ' ' . $anio,
+        'mes_corto' => substr($mesNombre, 0, 3) . ' ' . substr($anio, 2),
+        'nuevos_clientes' => intval($clientesMes['nuevos'] ?? 0),
+        'capital_nuevo' => floatval($clientesMes['capital_nuevo'] ?? 0),
+        'vehiculos_comprados' => intval($vehiculosComprados['comprados'] ?? 0),
+        'inversion_compra' => floatval($vehiculosComprados['total_compra'] ?? 0),
+        'vehiculos_vendidos' => intval($vehiculosVendidos['vendidos'] ?? 0),
+        'ingresos_venta' => floatval($vehiculosVendidos['total_venta'] ?? 0),
+        'beneficio' => floatval($vehiculosVendidos['beneficio_total'] ?? 0)
+    ];
+}
+
 // Últimos clientes registrados
 $ultimosClientes = $db->query("
     SELECT nombre, apellidos, email, capital_invertido, tipo_inversion, created_at
@@ -58,33 +109,74 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Admin InverCar</title>
+    <title>Panel - Admin InverCar</title>
     <link rel="icon" type="image/svg+xml" href="../assets/images/favicon.svg">
     <link rel="stylesheet" href="../assets/css/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .chart-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 200px;
+            padding: 20px 10px;
+            gap: 30px;
+        }
+        .chart-bar-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            height: 150px;
+        }
+        .chart-bar {
+            width: 24px;
+            min-height: 4px;
+            transition: height 0.3s ease;
+        }
+        .chart-bar.clientes { background: #3b82f6; }
+        .chart-bar.compras { background: #d4a84b; }
+        .chart-bar.ventas { background: #10b981; }
+        .chart-bar-label {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .chart-legend {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+        .chart-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .chart-legend-color {
+            width: 12px;
+            height: 12px;
+        }
+        .monthly-stats-table td {
+            vertical-align: middle;
+        }
+        .trend-up { color: #10b981; }
+        .trend-down { color: #ef4444; }
+        .trend-neutral { color: var(--text-muted); }
+    </style>
 </head>
 <body>
     <div class="admin-wrapper">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-logo">
-                <img src="../assets/images/logo-invercar-text.png" alt="InverCar" style="height: 40px; width: auto;">
-            </div>
-            <div class="sidebar-badge">ADMIN</div>
-
-            <ul class="sidebar-menu">
-                <li><a href="index.php" class="active"><span class="icon">◈</span> Panel</a></li>
-                <li><a href="clientes.php"><span class="icon">◉</span> Clientes</a></li>
-                <li><a href="vehiculos.php"><span class="icon">◆</span> Vehículos</a></li>
-
-                <li class="sidebar-section">Configuración</li>
-                <li><a href="contactos.php"><span class="icon">◇</span> Mensajes <?php if($mensajesNoLeidos > 0): ?><span class="badge badge-danger"><?php echo $mensajesNoLeidos; ?></span><?php endif; ?></a></li>
-                <li><a href="configuracion.php"><span class="icon">◎</span> Ajustes</a></li>
-
-                <li class="sidebar-section">Cuenta</li>
-                <li><a href="logout.php"><span class="icon">◁</span> Cerrar sesión</a></li>
-            </ul>
-        </aside>
+        <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -127,7 +219,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                     <div class="stat-header">
                         <div>
                             <div class="stat-value"><?php echo formatMoney($statsVehiculos['capital_invertido'] ?? 0); ?></div>
-                            <div class="stat-label">Capital Invertido</div>
+                            <div class="stat-label">Capital en Vehículos</div>
                         </div>
                         <div class="stat-icon orange">🚗</div>
                     </div>
@@ -178,6 +270,112 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                             <div class="stat-value"><?php echo $statsVehiculos['en_venta'] ?? 0; ?> / <?php echo $statsVehiculos['total'] ?? 0; ?></div>
                             <div class="stat-label">Vehículos en Venta / Total</div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estadísticas Últimos 3 Meses -->
+            <div class="card" style="margin-bottom: 30px;">
+                <div class="card-header">
+                    <h2>Estadísticas Últimos 3 Meses</h2>
+                </div>
+                <div class="card-body">
+                    <?php
+                    // Calcular máximos para escalar las barras
+                    $maxClientes = max(array_column($estadisticasMensuales, 'nuevos_clientes')) ?: 1;
+                    $maxCompras = max(array_column($estadisticasMensuales, 'vehiculos_comprados')) ?: 1;
+                    $maxVentas = max(array_column($estadisticasMensuales, 'vehiculos_vendidos')) ?: 1;
+                    $maxValue = max($maxClientes, $maxCompras, $maxVentas) ?: 1;
+                    ?>
+                    <div class="chart-container">
+                        <?php foreach ($estadisticasMensuales as $mes): ?>
+                        <div class="chart-bar-group">
+                            <div class="chart-bars">
+                                <div class="chart-bar clientes" style="height: <?php echo ($mes['nuevos_clientes'] / $maxValue) * 130 + 4; ?>px;" title="<?php echo $mes['nuevos_clientes']; ?> nuevos clientes"></div>
+                                <div class="chart-bar compras" style="height: <?php echo ($mes['vehiculos_comprados'] / $maxValue) * 130 + 4; ?>px;" title="<?php echo $mes['vehiculos_comprados']; ?> vehículos comprados"></div>
+                                <div class="chart-bar ventas" style="height: <?php echo ($mes['vehiculos_vendidos'] / $maxValue) * 130 + 4; ?>px;" title="<?php echo $mes['vehiculos_vendidos']; ?> vehículos vendidos"></div>
+                            </div>
+                            <div class="chart-bar-label"><?php echo $mes['mes_corto']; ?></div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="chart-legend">
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-color" style="background: #3b82f6;"></div>
+                            <span>Nuevos Clientes</span>
+                        </div>
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-color" style="background: #d4a84b;"></div>
+                            <span>Vehículos Comprados</span>
+                        </div>
+                        <div class="chart-legend-item">
+                            <div class="chart-legend-color" style="background: #10b981;"></div>
+                            <span>Vehículos Vendidos</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla detallada de 3 meses -->
+            <div class="card" style="margin-bottom: 30px;">
+                <div class="card-header">
+                    <h2>Detalle Mensual</h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="monthly-stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Mes</th>
+                                    <th>Nuevos Clientes</th>
+                                    <th>Capital Captado</th>
+                                    <th>Vehículos Comprados</th>
+                                    <th>Inversión Compra</th>
+                                    <th>Vehículos Vendidos</th>
+                                    <th>Ingresos Venta</th>
+                                    <th>Beneficio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($estadisticasMensuales as $mes): ?>
+                                <tr>
+                                    <td><strong><?php echo $mes['mes']; ?></strong></td>
+                                    <td>
+                                        <span class="badge badge-info"><?php echo $mes['nuevos_clientes']; ?></span>
+                                    </td>
+                                    <td><?php echo formatMoney($mes['capital_nuevo']); ?></td>
+                                    <td>
+                                        <span class="badge badge-warning"><?php echo $mes['vehiculos_comprados']; ?></span>
+                                    </td>
+                                    <td><?php echo formatMoney($mes['inversion_compra']); ?></td>
+                                    <td>
+                                        <span class="badge badge-success"><?php echo $mes['vehiculos_vendidos']; ?></span>
+                                    </td>
+                                    <td><?php echo formatMoney($mes['ingresos_venta']); ?></td>
+                                    <td>
+                                        <span class="<?php echo $mes['beneficio'] >= 0 ? 'trend-up' : 'trend-down'; ?>" style="font-weight: 600;">
+                                            <?php echo formatMoney($mes['beneficio']); ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                                <tr style="background: rgba(212, 168, 75, 0.1); font-weight: bold;">
+                                    <td>TOTAL 3 MESES</td>
+                                    <td><?php echo array_sum(array_column($estadisticasMensuales, 'nuevos_clientes')); ?></td>
+                                    <td><?php echo formatMoney(array_sum(array_column($estadisticasMensuales, 'capital_nuevo'))); ?></td>
+                                    <td><?php echo array_sum(array_column($estadisticasMensuales, 'vehiculos_comprados')); ?></td>
+                                    <td><?php echo formatMoney(array_sum(array_column($estadisticasMensuales, 'inversion_compra'))); ?></td>
+                                    <td><?php echo array_sum(array_column($estadisticasMensuales, 'vehiculos_vendidos')); ?></td>
+                                    <td><?php echo formatMoney(array_sum(array_column($estadisticasMensuales, 'ingresos_venta'))); ?></td>
+                                    <td>
+                                        <?php $totalBeneficio = array_sum(array_column($estadisticasMensuales, 'beneficio')); ?>
+                                        <span class="<?php echo $totalBeneficio >= 0 ? 'trend-up' : 'trend-down'; ?>">
+                                            <?php echo formatMoney($totalBeneficio); ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

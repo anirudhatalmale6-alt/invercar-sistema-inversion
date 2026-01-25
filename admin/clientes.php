@@ -19,23 +19,79 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $action = $_POST['action'] ?? '';
 
-        if ($action === 'toggle_activo') {
+        if ($action === 'crear' || $action === 'editar') {
+            $id = intval($_POST['id'] ?? 0);
+            $nombre = cleanInput($_POST['nombre'] ?? '');
+            $apellidos = cleanInput($_POST['apellidos'] ?? '');
+            $email = cleanInput($_POST['email'] ?? '');
+            $dni = cleanInput($_POST['dni'] ?? '');
+            $telefono = cleanInput($_POST['telefono'] ?? '');
+            $direccion = cleanInput($_POST['direccion'] ?? '');
+            $codigo_postal = cleanInput($_POST['codigo_postal'] ?? '');
+            $poblacion = cleanInput($_POST['poblacion'] ?? '');
+            $provincia = cleanInput($_POST['provincia'] ?? '');
+            $pais = cleanInput($_POST['pais'] ?? 'España');
+            $capital_invertido = floatval($_POST['capital_invertido'] ?? 0);
+            $tipo_inversion = cleanInput($_POST['tipo_inversion'] ?? '');
+            $activo = intval($_POST['activo'] ?? 1);
+
+            // Validaciones
+            if (empty($nombre) || empty($apellidos) || empty($email)) {
+                $error = 'Nombre, apellidos y email son obligatorios.';
+            } elseif (!validarEmail($email)) {
+                $error = 'El email no es válido.';
+            } elseif (!in_array($tipo_inversion, ['fija', 'variable', ''])) {
+                $error = 'Tipo de inversión no válido.';
+            } else {
+                try {
+                    if ($action === 'crear') {
+                        // Verificar email único
+                        $stmt = $db->prepare("SELECT id FROM clientes WHERE email = ?");
+                        $stmt->execute([$email]);
+                        if ($stmt->fetch()) {
+                            $error = 'Ya existe un cliente con ese email.';
+                        } else {
+                            // Generar password temporal
+                            $passwordTemp = bin2hex(random_bytes(4));
+                            $passwordHash = password_hash($passwordTemp, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
+
+                            $sql = "INSERT INTO clientes (nombre, apellidos, email, password, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, capital_invertido, tipo_inversion, activo, registro_completo, email_verificado)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)";
+                            $stmt = $db->prepare($sql);
+                            $stmt->execute([$nombre, $apellidos, $email, $passwordHash, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $capital_invertido, $tipo_inversion ?: null, $activo]);
+                            $exito = "Cliente creado correctamente. Contraseña temporal: $passwordTemp";
+                        }
+                    } else {
+                        // Verificar email único (excepto el propio cliente)
+                        $stmt = $db->prepare("SELECT id FROM clientes WHERE email = ? AND id != ?");
+                        $stmt->execute([$email, $id]);
+                        if ($stmt->fetch()) {
+                            $error = 'Ya existe otro cliente con ese email.';
+                        } else {
+                            $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, capital_invertido=?, tipo_inversion=?, activo=? WHERE id=?";
+                            $stmt = $db->prepare($sql);
+                            $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $capital_invertido, $tipo_inversion ?: null, $activo, $id]);
+                            $exito = 'Cliente actualizado correctamente.';
+                        }
+                    }
+                } catch (Exception $e) {
+                    $error = DEBUG_MODE ? $e->getMessage() : 'Error al guardar el cliente.';
+                }
+            }
+        } elseif ($action === 'eliminar') {
+            $id = intval($_POST['id'] ?? 0);
+            try {
+                $stmt = $db->prepare("DELETE FROM clientes WHERE id = ?");
+                $stmt->execute([$id]);
+                $exito = 'Cliente eliminado correctamente.';
+            } catch (Exception $e) {
+                $error = 'Error al eliminar el cliente. Es posible que tenga datos asociados.';
+            }
+        } elseif ($action === 'toggle_activo') {
             $id = intval($_POST['id'] ?? 0);
             $activo = intval($_POST['activo'] ?? 0);
             $db->prepare("UPDATE clientes SET activo = ? WHERE id = ?")->execute([$activo, $id]);
             $exito = $activo ? 'Cliente activado.' : 'Cliente desactivado.';
-        } elseif ($action === 'actualizar_capital') {
-            $id = intval($_POST['id'] ?? 0);
-            $capital = floatval($_POST['capital_invertido'] ?? 0);
-            $tipo = cleanInput($_POST['tipo_inversion'] ?? '');
-
-            if (in_array($tipo, ['fija', 'variable']) && $capital >= 0) {
-                $db->prepare("UPDATE clientes SET capital_invertido = ?, tipo_inversion = ? WHERE id = ?")
-                   ->execute([$capital, $tipo, $id]);
-                $exito = 'Capital actualizado correctamente.';
-            } else {
-                $error = 'Datos no válidos.';
-            }
         } elseif ($action === 'guardar_rentabilidad') {
             $clienteId = intval($_POST['cliente_id'] ?? 0);
             $semana = intval($_POST['semana'] ?? 0);
@@ -44,7 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $euros = floatval($_POST['rentabilidad_euros'] ?? 0);
 
             if ($clienteId > 0 && $semana >= 1 && $semana <= 9) {
-                // Insertar o actualizar
                 $stmt = $db->prepare("
                     INSERT INTO rentabilidad_semanal (cliente_id, semana, anio, rentabilidad_porcentaje, rentabilidad_euros)
                     VALUES (?, ?, ?, ?, ?)
@@ -53,6 +108,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$clienteId, $semana, $anio, $porcentaje, $euros]);
                 $exito = 'Rentabilidad guardada.';
             }
+        } elseif ($action === 'reset_password') {
+            $id = intval($_POST['id'] ?? 0);
+            $passwordTemp = bin2hex(random_bytes(4));
+            $passwordHash = password_hash($passwordTemp, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
+            $db->prepare("UPDATE clientes SET password = ? WHERE id = ?")->execute([$passwordHash, $id]);
+            $exito = "Contraseña reseteada. Nueva contraseña temporal: $passwordTemp";
         }
     }
 }
@@ -71,6 +132,14 @@ $sql .= " ORDER BY created_at DESC";
 $stmt = $db->prepare($sql);
 $stmt->execute($params);
 $clientes = $stmt->fetchAll();
+
+// Cliente a editar
+$clienteEditar = null;
+if (isset($_GET['editar'])) {
+    $stmt = $db->prepare("SELECT * FROM clientes WHERE id = ?");
+    $stmt->execute([intval($_GET['editar'])]);
+    $clienteEditar = $stmt->fetch();
+}
 
 // Cliente detalle
 $clienteDetalle = null;
@@ -102,26 +171,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
 </head>
 <body>
     <div class="admin-wrapper">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-logo">
-                <img src="../assets/images/logo-invercar-text.png" alt="InverCar" style="height: 40px; width: auto;">
-            </div>
-            <div class="sidebar-badge">ADMIN</div>
-
-            <ul class="sidebar-menu">
-                <li><a href="index.php"><span class="icon">◈</span> Panel</a></li>
-                <li><a href="clientes.php" class="active"><span class="icon">◉</span> Clientes</a></li>
-                <li><a href="vehiculos.php"><span class="icon">◆</span> Vehículos</a></li>
-
-                <li class="sidebar-section">Configuración</li>
-                <li><a href="contactos.php"><span class="icon">◇</span> Mensajes <?php if($mensajesNoLeidos > 0): ?><span class="badge badge-danger"><?php echo $mensajesNoLeidos; ?></span><?php endif; ?></a></li>
-                <li><a href="configuracion.php"><span class="icon">◎</span> Ajustes</a></li>
-
-                <li class="sidebar-section">Cuenta</li>
-                <li><a href="logout.php"><span class="icon">◁</span> Cerrar sesión</a></li>
-            </ul>
-        </aside>
+        <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -130,6 +180,11 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                     <h1>Gestión de Clientes</h1>
                     <p>Administra los inversores de la plataforma</p>
                 </div>
+                <?php if (!$clienteDetalle): ?>
+                <button class="btn btn-primary" onclick="document.getElementById('modalCliente').classList.add('active')">
+                    + Añadir Cliente
+                </button>
+                <?php endif; ?>
             </div>
 
             <?php if ($error): ?>
@@ -144,7 +199,10 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                 <div class="card" style="margin-bottom: 20px;">
                     <div class="card-header">
                         <h2>Detalle: <?php echo escape($clienteDetalle['nombre'] . ' ' . $clienteDetalle['apellidos']); ?></h2>
-                        <a href="clientes.php" class="btn btn-outline">← Volver</a>
+                        <div class="actions">
+                            <a href="?editar=<?php echo $clienteDetalle['id']; ?>" class="btn btn-sm btn-outline">Editar</a>
+                            <a href="clientes.php" class="btn btn-outline">← Volver</a>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
@@ -155,28 +213,33 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                 <p><strong>Teléfono:</strong> <?php echo escape($clienteDetalle['telefono']); ?></p>
                                 <p><strong>Dirección:</strong> <?php echo escape($clienteDetalle['direccion']); ?></p>
                                 <p><strong>Localidad:</strong> <?php echo escape($clienteDetalle['codigo_postal'] . ' ' . $clienteDetalle['poblacion'] . ', ' . $clienteDetalle['provincia']); ?></p>
+                                <p><strong>País:</strong> <?php echo escape($clienteDetalle['pais']); ?></p>
+                                <p><strong>Estado:</strong>
+                                    <span class="badge <?php echo $clienteDetalle['activo'] ? 'badge-success' : 'badge-danger'; ?>">
+                                        <?php echo $clienteDetalle['activo'] ? 'Activo' : 'Inactivo'; ?>
+                                    </span>
+                                </p>
+                                <p><strong>Registrado:</strong> <?php echo date('d/m/Y H:i', strtotime($clienteDetalle['created_at'])); ?></p>
                             </div>
                             <div>
                                 <h4 style="color: var(--text-muted); margin-bottom: 10px;">Inversión</h4>
-                                <form method="POST" style="display: flex; flex-direction: column; gap: 10px;">
-                                    <?php echo csrfField(); ?>
-                                    <input type="hidden" name="action" value="actualizar_capital">
-                                    <input type="hidden" name="id" value="<?php echo $clienteDetalle['id']; ?>">
+                                <p style="font-size: 2rem; font-weight: bold; color: var(--gold);"><?php echo formatMoney($clienteDetalle['capital_invertido']); ?></p>
+                                <p><strong>Tipo:</strong>
+                                    <span class="badge <?php echo $clienteDetalle['tipo_inversion'] === 'fija' ? 'badge-info' : 'badge-success'; ?>">
+                                        <?php echo ucfirst($clienteDetalle['tipo_inversion'] ?? 'No definido'); ?>
+                                    </span>
+                                </p>
 
-                                    <div class="form-group" style="margin-bottom: 10px;">
-                                        <label>Capital Invertido (€)</label>
-                                        <input type="number" name="capital_invertido" step="0.01"
-                                               value="<?php echo $clienteDetalle['capital_invertido']; ?>">
-                                    </div>
-                                    <div class="form-group" style="margin-bottom: 10px;">
-                                        <label>Tipo de Inversión</label>
-                                        <select name="tipo_inversion">
-                                            <option value="fija" <?php echo $clienteDetalle['tipo_inversion'] === 'fija' ? 'selected' : ''; ?>>Fija</option>
-                                            <option value="variable" <?php echo $clienteDetalle['tipo_inversion'] === 'variable' ? 'selected' : ''; ?>>Variable</option>
-                                        </select>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">Actualizar</button>
-                                </form>
+                                <div style="margin-top: 20px;">
+                                    <form method="POST" style="display: inline;">
+                                        <?php echo csrfField(); ?>
+                                        <input type="hidden" name="action" value="reset_password">
+                                        <input type="hidden" name="id" value="<?php echo $clienteDetalle['id']; ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline" onclick="return confirm('¿Resetear la contraseña de este cliente?');">
+                                            Resetear Contraseña
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
 
@@ -295,7 +358,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             <td><?php echo formatMoney($c['capital_invertido']); ?></td>
                                             <td>
                                                 <span class="badge <?php echo $c['tipo_inversion'] === 'fija' ? 'badge-info' : 'badge-success'; ?>">
-                                                    <?php echo ucfirst($c['tipo_inversion']); ?>
+                                                    <?php echo ucfirst($c['tipo_inversion'] ?? '-'); ?>
                                                 </span>
                                             </td>
                                             <td>
@@ -307,14 +370,12 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             <td>
                                                 <div class="actions">
                                                     <a href="?ver=<?php echo $c['id']; ?>" class="btn btn-sm btn-outline">Ver</a>
-                                                    <form method="POST" style="display: inline;">
+                                                    <a href="?editar=<?php echo $c['id']; ?>" class="btn btn-sm btn-outline">Editar</a>
+                                                    <form method="POST" style="display: inline;" onsubmit="return confirm('¿Eliminar este cliente? Esta acción no se puede deshacer.');">
                                                         <?php echo csrfField(); ?>
-                                                        <input type="hidden" name="action" value="toggle_activo">
+                                                        <input type="hidden" name="action" value="eliminar">
                                                         <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
-                                                        <input type="hidden" name="activo" value="<?php echo $c['activo'] ? 0 : 1; ?>">
-                                                        <button type="submit" class="btn btn-sm <?php echo $c['activo'] ? 'btn-danger' : 'btn-primary'; ?>">
-                                                            <?php echo $c['activo'] ? 'Desactivar' : 'Activar'; ?>
-                                                        </button>
+                                                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
                                                     </form>
                                                 </div>
                                             </td>
@@ -329,5 +390,133 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
             <?php endif; ?>
         </main>
     </div>
+
+    <!-- Modal Crear/Editar Cliente -->
+    <div class="modal-overlay <?php echo ($clienteEditar || isset($_GET['crear'])) ? 'active' : ''; ?>" id="modalCliente">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3><?php echo $clienteEditar ? 'Editar Cliente' : 'Añadir Cliente'; ?></h3>
+                <a href="clientes.php" class="modal-close">&times;</a>
+            </div>
+            <form method="POST">
+                <div class="modal-body">
+                    <?php echo csrfField(); ?>
+                    <input type="hidden" name="action" value="<?php echo $clienteEditar ? 'editar' : 'crear'; ?>">
+                    <?php if ($clienteEditar): ?>
+                        <input type="hidden" name="id" value="<?php echo $clienteEditar['id']; ?>">
+                    <?php endif; ?>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nombre *</label>
+                            <input type="text" name="nombre" required
+                                   value="<?php echo escape($clienteEditar['nombre'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Apellidos *</label>
+                            <input type="text" name="apellidos" required
+                                   value="<?php echo escape($clienteEditar['apellidos'] ?? ''); ?>">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" name="email" required
+                                   value="<?php echo escape($clienteEditar['email'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>DNI</label>
+                            <input type="text" name="dni"
+                                   value="<?php echo escape($clienteEditar['dni'] ?? ''); ?>">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Teléfono</label>
+                            <input type="tel" name="telefono"
+                                   value="<?php echo escape($clienteEditar['telefono'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>País</label>
+                            <input type="text" name="pais"
+                                   value="<?php echo escape($clienteEditar['pais'] ?? 'España'); ?>">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Dirección</label>
+                        <input type="text" name="direccion"
+                               value="<?php echo escape($clienteEditar['direccion'] ?? ''); ?>">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Código Postal</label>
+                            <input type="text" name="codigo_postal"
+                                   value="<?php echo escape($clienteEditar['codigo_postal'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Población</label>
+                            <input type="text" name="poblacion"
+                                   value="<?php echo escape($clienteEditar['poblacion'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Provincia</label>
+                            <input type="text" name="provincia"
+                                   value="<?php echo escape($clienteEditar['provincia'] ?? ''); ?>">
+                        </div>
+                    </div>
+
+                    <hr style="border-color: var(--border-color); margin: 20px 0;">
+                    <h4 style="margin-bottom: 15px; color: var(--gold);">Datos de Inversión</h4>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Capital Invertido (€)</label>
+                            <input type="number" name="capital_invertido" step="0.01" min="0"
+                                   value="<?php echo escape($clienteEditar['capital_invertido'] ?? '0'); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de Inversión</label>
+                            <select name="tipo_inversion">
+                                <option value="">-- Seleccionar --</option>
+                                <option value="fija" <?php echo ($clienteEditar['tipo_inversion'] ?? '') === 'fija' ? 'selected' : ''; ?>>Fija</option>
+                                <option value="variable" <?php echo ($clienteEditar['tipo_inversion'] ?? '') === 'variable' ? 'selected' : ''; ?>>Variable</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Estado</label>
+                        <select name="activo">
+                            <option value="1" <?php echo ($clienteEditar['activo'] ?? 1) == 1 ? 'selected' : ''; ?>>Activo</option>
+                            <option value="0" <?php echo ($clienteEditar['activo'] ?? 1) == 0 ? 'selected' : ''; ?>>Inactivo</option>
+                        </select>
+                    </div>
+
+                    <?php if (!$clienteEditar): ?>
+                    <div class="alert" style="background: rgba(212, 168, 75, 0.1); border: 1px solid var(--gold); color: var(--gold);">
+                        Al crear el cliente se generará una contraseña temporal que se mostrará en pantalla.
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <div class="modal-footer">
+                    <a href="clientes.php" class="btn btn-outline">Cancelar</a>
+                    <button type="submit" class="btn btn-primary"><?php echo $clienteEditar ? 'Guardar cambios' : 'Crear cliente'; ?></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('modalCliente').addEventListener('click', function(e) {
+            if (e.target === this) {
+                window.location.href = 'clientes.php';
+            }
+        });
+    </script>
 </body>
 </html>

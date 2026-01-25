@@ -108,14 +108,25 @@ a {
 }
 
 .sidebar-menu .icon {
-    font-size: 1rem;
-    color: var(--gold);
     width: 20px;
-    text-align: center;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.sidebar-menu a.active .icon {
-    color: #000;
+.sidebar-menu .icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: var(--gold);
+}
+
+.sidebar-menu a.active .icon svg {
+    stroke: #000;
+}
+
+.sidebar-menu a:hover .icon svg {
+    stroke: var(--text-light);
 }
 
 .sidebar-section {
@@ -132,6 +143,27 @@ a {
     flex: 1;
     margin-left: var(--sidebar-width);
     padding: 20px 30px;
+    position: relative;
+    background-image: url('../images/admin-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+.main-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    pointer-events: none;
+}
+
+.main-content > * {
+    position: relative;
+    z-index: 1;
 }
 
 /* Top Bar */
