@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     <li><a href="#como-funciona">Cómo Funciona</a></li>
                     <li><a href="#servicios">Servicios</a></li>
                     <li><a href="#contacto">Contacto</a></li>
-                    <li><a href="cliente/login.php" class="btn btn-outline" style="padding: 10px 20px;">Acceso Clientes</a></li>
+                    <li><a href="cliente/login.php">Acceso Clientes</a></li>
                 </ul>
             </nav>
             <button class="mobile-menu-toggle">☰</button>
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         <div class="hero-content">
             <h1>Maximiza tus Inversiones con <span>Nosotros</span></h1>
             <p>Obtén la mejor rentabilidad con nuestro sistema de inversión avanzado en el sector automovilístico.</p>
-            <a href="#contacto" class="btn btn-primary">Empieza a Invertir</a>
+            <a href="cliente/registro.php" class="btn btn-primary">Empieza a Invertir</a>
         </div>
     </section>
 
