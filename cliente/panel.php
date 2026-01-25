@@ -262,7 +262,7 @@ foreach ($rentabilidad as $r) {
     <!-- Header -->
     <header class="panel-header">
         <div class="container">
-            <a href="../index.php" class="logo"><img src="../assets/images/logo-invercar.png" alt="InverCar" style="height: 60px;"></a>
+            <a href="../index.php" class="logo"><img src="../assets/images/logo-invercar.png" alt="InverCar" style="height: 80px; max-width: 220px;"></a>
             <nav class="panel-nav">
                 <span style="color: var(--text-muted);">Hola, <?php echo escape($cliente['nombre']); ?></span>
                 <a href="logout.php" class="btn btn-outline" style="padding: 8px 15px;">Cerrar sesión</a>

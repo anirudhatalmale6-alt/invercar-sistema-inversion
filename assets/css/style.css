@@ -62,6 +62,15 @@ a {
     font-size: 1.8rem;
     font-weight: bold;
     color: var(--text-light);
+    display: flex;
+    align-items: center;
+}
+
+.logo img {
+    height: 70px;
+    width: auto;
+    max-width: 220px;
+    object-fit: contain;
 }
 
 .logo span {
