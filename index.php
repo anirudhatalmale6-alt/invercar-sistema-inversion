@@ -70,9 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
             <nav class="nav">
                 <ul>
                     <li><a href="#inicio" class="active">Inicio</a></li>
+                    <li><a href="#rentabilidad-actual">Rentabilidad Actual</a></li>
                     <li><a href="#como-funciona">Cómo Funciona</a></li>
                     <li><a href="#como-invertir">Cómo Invertir</a></li>
-                    <li><a href="#rentabilidad-actual">Rentabilidad Actual</a></li>
                     <li><a href="#contacto">Contacto</a></li>
                     <li><a href="cliente/login.php">Acceso Clientes</a></li>
                 </ul>
@@ -163,6 +163,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         </div>
     </section>
 
+    <!-- Rentabilidad Actual Section -->
+    <section class="data-section" id="rentabilidad-actual">
+        <div class="container">
+            <div class="section-title">
+                <h2>Rentabilidad Actual</h2>
+                <p>Dos opciones de inversión adaptadas a tus necesidades</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Rentabilidad Fija</h3>
+                    <div class="value"><?php echo formatPercent(floatval(getConfig('rentabilidad_fija', 5))); ?></div>
+                    <div class="label">Mensual Garantizado</div>
+                    <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
+                        Ideal para inversores conservadores que buscan estabilidad y seguridad en sus inversiones.
+                    </p>
+                </div>
+                <div class="stat-card">
+                    <h3>Rentabilidad Variable</h3>
+                    <div class="value"><?php echo formatPercent($stats['rentabilidad_actual']); ?></div>
+                    <div class="label">Rendimiento Actual</div>
+                    <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
+                        Para inversores que buscan maximizar beneficios con el rendimiento real de las operaciones.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- How It Works Section - Explanation -->
     <section class="how-it-works" id="como-funciona">
         <div class="container">
@@ -227,34 +255,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     <div class="step-number">4</div>
                     <h3>Recibe Rentabilidad</h3>
                     <p>Observa cómo crece tu inversión y recibe beneficios periódicamente.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Rentabilidad Actual Section -->
-    <section class="data-section" id="rentabilidad-actual">
-        <div class="container">
-            <div class="section-title">
-                <h2>Rentabilidad Actual</h2>
-                <p>Dos opciones de inversión adaptadas a tus necesidades</p>
-            </div>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>Rentabilidad Fija</h3>
-                    <div class="value"><?php echo formatPercent(floatval(getConfig('rentabilidad_fija', 5))); ?></div>
-                    <div class="label">Mensual Garantizado</div>
-                    <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
-                        Ideal para inversores conservadores que buscan estabilidad y seguridad en sus inversiones.
-                    </p>
-                </div>
-                <div class="stat-card">
-                    <h3>Rentabilidad Variable</h3>
-                    <div class="value"><?php echo formatPercent($stats['rentabilidad_actual']); ?></div>
-                    <div class="label">Rendimiento Actual</div>
-                    <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
-                        Para inversores que buscan maximizar beneficios con el rendimiento real de las operaciones.
-                    </p>
                 </div>
             </div>
         </div>
