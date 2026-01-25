@@ -11,9 +11,9 @@ if (!defined('INVERCAR')) {
 
 // Configuración de Base de Datos
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'InverCar');
-define('DB_USER', 'tu_usuario');
-define('DB_PASS', 'tu_password');
+define('DB_NAME', '8542231_InverCar');
+define('DB_USER', 'AlbRod');
+define('DB_PASS', 'AlbRodRod*2026');
 define('DB_CHARSET', 'utf8mb4');
 
 // Configuración del sitio
