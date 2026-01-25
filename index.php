@@ -70,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                 <ul>
                     <li><a href="#inicio" class="active">Inicio</a></li>
                     <li><a href="#como-funciona">Cómo Funciona</a></li>
+                    <li><a href="#como-invertir">Cómo Invertir</a></li>
                     <li><a href="#servicios">Servicios</a></li>
                     <li><a href="#contacto">Contacto</a></li>
                     <li><a href="cliente/login.php">Acceso Clientes</a></li>
@@ -189,11 +190,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         </div>
     </section>
 
-    <!-- How It Works Section -->
+    <!-- How It Works Section - Explanation -->
     <section class="how-it-works" id="como-funciona">
         <div class="container">
             <div class="section-title">
                 <h2>Cómo Funciona</h2>
+                <p>Tu inversión respaldada por activos reales</p>
+            </div>
+            <div class="explanation-content">
+                <div class="explanation-block">
+                    <div class="explanation-icon">🚗</div>
+                    <h3>Inversión Respaldada por Bienes Reales</h3>
+                    <p>En InverCar agrupamos capital de múltiples inversores para adquirir vehículos de alta rotación. <strong>Tu inversión siempre está respaldada por un bien tangible</strong>, lo que minimiza significativamente el riesgo. A diferencia de otras inversiones, aquí existe una garantía real: el propio vehículo.</p>
+                </div>
+                <div class="explanation-block">
+                    <div class="explanation-icon">📊</div>
+                    <h3>Elige Tu Modalidad de Rentabilidad</h3>
+                    <p>Al depositar tu capital, decides cómo quieres que trabaje tu dinero:</p>
+                    <ul class="explanation-list">
+                        <li><strong>Rentabilidad Fija:</strong> Inversión 100% garantizada con un mínimo del 10% anual. Ideal si prefieres seguridad y estabilidad. Consulta la rentabilidad actual en nuestro panel.</li>
+                        <li><strong>Rentabilidad Variable:</strong> Participas directamente en los beneficios de la venta de vehículos. Mayor potencial de ganancia, aunque no está garantizada. Consulta el rendimiento medio actual.</li>
+                    </ul>
+                </div>
+                <div class="explanation-block">
+                    <div class="explanation-icon">💰</div>
+                    <h3>Liquidez Total: Tu Dinero Siempre Disponible</h3>
+                    <p>Una de las grandes ventajas de InverCar: <strong>puedes retirar tu capital total o parcialmente cuando lo desees</strong>. Al hacerlo, recibirás la proporción de rentabilidad que te corresponda hasta ese momento. Sin permanencias, sin penalizaciones, con total transparencia.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How To Invest Section - Steps -->
+    <section class="data-section" id="como-invertir">
+        <div class="container">
+            <div class="section-title">
+                <h2>Cómo Invertir</h2>
                 <p>Proceso sencillo para empezar a invertir con InverCar</p>
             </div>
             <div class="steps-grid">

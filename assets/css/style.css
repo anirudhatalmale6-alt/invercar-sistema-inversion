@@ -382,6 +382,74 @@ a {
     color: var(--text-muted);
 }
 
+/* Explanation Content - Como Funciona */
+.explanation-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.explanation-block {
+    background: rgba(15, 15, 15, 0.8);
+    border: 1px solid rgba(212, 168, 75, 0.2);
+    padding: 40px;
+    text-align: left;
+}
+
+.explanation-block:hover {
+    border-color: rgba(212, 168, 75, 0.4);
+}
+
+.explanation-icon {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+.explanation-block h3 {
+    color: var(--gold);
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+}
+
+.explanation-block p {
+    color: #999;
+    line-height: 1.8;
+    margin-bottom: 15px;
+    font-size: 0.95rem;
+}
+
+.explanation-block strong {
+    color: var(--gold);
+}
+
+.explanation-list {
+    list-style: none;
+    padding: 0;
+    margin: 15px 0 0 0;
+}
+
+.explanation-list li {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(212, 168, 75, 0.1);
+    color: #999;
+    line-height: 1.7;
+    font-size: 0.95rem;
+}
+
+.explanation-list li:last-child {
+    border-bottom: none;
+}
+
+.explanation-list li strong {
+    color: var(--gold);
+    display: block;
+    margin-bottom: 5px;
+}
+
 .data-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
