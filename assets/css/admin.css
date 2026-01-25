@@ -1,17 +1,19 @@
 /* InverCar - Admin Panel Styles */
 
 :root {
-    --primary-color: #0d9b5c;
-    --primary-dark: #087a47;
-    --secondary-color: #1a2332;
-    --dark-bg: #0a1628;
-    --card-bg: rgba(26, 35, 50, 0.95);
+    --primary-color: #d4a84b;
+    --primary-dark: #b8922f;
+    --secondary-color: #0d0d0d;
+    --dark-bg: #000000;
+    --card-bg: rgba(15, 15, 15, 0.95);
     --text-light: #ffffff;
-    --text-muted: #a0aec0;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --success: #10b981;
+    --text-muted: #a0a0a0;
+    --border-color: rgba(212, 168, 75, 0.2);
+    --success: #d4a84b;
     --danger: #ef4444;
-    --warning: #f59e0b;
+    --warning: #d4a84b;
+    --gold: #d4a84b;
+    --gold-light: #e8c068;
     --sidebar-width: 260px;
 }
 

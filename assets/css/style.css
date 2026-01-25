@@ -1,17 +1,19 @@
 /* InverCar - Estilos principales */
 
 :root {
-    --primary-color: #0d9b5c;
-    --primary-dark: #087a47;
-    --secondary-color: #1a2332;
-    --dark-bg: #0a1628;
-    --card-bg: rgba(26, 35, 50, 0.95);
+    --primary-color: #d4a84b;
+    --primary-dark: #b8922f;
+    --secondary-color: #0d0d0d;
+    --dark-bg: #000000;
+    --card-bg: rgba(15, 15, 15, 0.95);
     --text-light: #ffffff;
-    --text-muted: #a0aec0;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --success: #10b981;
+    --text-muted: #a0a0a0;
+    --border-color: rgba(212, 168, 75, 0.2);
+    --success: #d4a84b;
     --danger: #ef4444;
-    --warning: #f59e0b;
+    --warning: #d4a84b;
+    --gold: #d4a84b;
+    --gold-light: #e8c068;
 }
 
 * {
@@ -40,7 +42,7 @@ a {
 
 /* Header */
 .header {
-    background: rgba(10, 22, 40, 0.95);
+    background: rgba(0, 0, 0, 0.95);
     padding: 15px 0;
     position: fixed;
     width: 100%;
@@ -103,7 +105,7 @@ a {
     left: 0;
     right: 0;
     bottom: 0;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%230d9b5c" stop-opacity="0.1"/><stop offset="100%" stop-color="%230d9b5c" stop-opacity="0"/></linearGradient></defs><rect fill="url(%23g)" width="100" height="100"/></svg>');
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23d4a84b" stop-opacity="0.1"/><stop offset="100%" stop-color="%23d4a84b" stop-opacity="0"/></linearGradient></defs><rect fill="url(%23g)" width="100" height="100"/></svg>');
     opacity: 0.5;
 }
 
@@ -141,14 +143,15 @@ a {
 }
 
 .btn-primary {
-    background: var(--primary-color);
-    color: white;
+    background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+    color: #000000;
+    font-weight: 700;
 }
 
 .btn-primary:hover {
     background: var(--primary-dark);
     transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(13, 155, 92, 0.3);
+    box-shadow: 0 10px 30px rgba(212, 168, 75, 0.3);
 }
 
 .btn-outline {
