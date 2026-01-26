@@ -33,8 +33,8 @@ $statsVehiculos = $db->query("
         COUNT(*) as total,
         SUM(CASE WHEN estado = 'en_venta' THEN 1 ELSE 0 END) as en_venta,
         SUM(CASE WHEN estado = 'vendido' THEN 1 ELSE 0 END) as vendidos,
-        COALESCE(SUM(CASE WHEN estado IN ('en_venta', 'reservado') THEN precio_compra + gastos ELSE 0 END), 0) as capital_invertido_vehiculos,
-        COALESCE(SUM(CASE WHEN estado IN ('en_venta', 'reservado') THEN valor_venta_previsto ELSE 0 END), 0) as valor_previsto
+        COALESCE(SUM(CASE WHEN estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado') THEN precio_compra + gastos ELSE 0 END), 0) as capital_invertido_vehiculos,
+        COALESCE(SUM(CASE WHEN estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado') THEN valor_venta_previsto ELSE 0 END), 0) as valor_previsto
     FROM vehiculos
 ")->fetch();
 
@@ -110,14 +110,27 @@ for ($i = 8; $i >= 0; $i--) {
     ];
 }
 
-// Calcular rentabilidad generada
+// Calcular capital y rentabilidad
+// El capital invertido real es el que está en vehículos activos
+$capitalInvertidoVehiculos = floatval($statsVehiculos['capital_invertido_vehiculos'] ?? 0);
+$capitalTotalClientes = floatval($statsClientes['capital_total'] ?? 0);
+$capitalReserva = max(0, $capitalTotalClientes - $capitalInvertidoVehiculos);
+
+// Capital por tipo de inversión (de clientes)
 $capitalFija = floatval($statsClientes['capital_fija'] ?? 0);
 $capitalVariable = floatval($statsClientes['capital_variable'] ?? 0);
-$rentabilidadGeneradaFija = $capitalFija * ($rentabilidadFija / 100);
-$rentabilidadGeneradaVariable = $capitalVariable * ($rentabilidadVariableActual / 100);
+
+// Calcular rentabilidad generada basada en capital invertido real (proporcional)
+$proporcionFija = $capitalTotalClientes > 0 ? $capitalFija / $capitalTotalClientes : 0;
+$proporcionVariable = $capitalTotalClientes > 0 ? $capitalVariable / $capitalTotalClientes : 0;
+
+$capitalInvertidoFija = $capitalInvertidoVehiculos * $proporcionFija;
+$capitalInvertidoVariable = $capitalInvertidoVehiculos * $proporcionVariable;
+
+$rentabilidadGeneradaFija = $capitalInvertidoFija * ($rentabilidadFija / 100);
+$rentabilidadGeneradaVariable = $capitalInvertidoVariable * ($rentabilidadVariableActual / 100);
 $rentabilidadTotalGenerada = $rentabilidadGeneradaFija + $rentabilidadGeneradaVariable;
-$capitalTotal = $capitalFija + $capitalVariable;
-$rentabilidadMediaPorcentaje = $capitalTotal > 0 ? ($rentabilidadTotalGenerada / $capitalTotal) * 100 : 0;
+$rentabilidadMediaPorcentaje = $capitalInvertidoVehiculos > 0 ? ($rentabilidadTotalGenerada / $capitalInvertidoVehiculos) * 100 : 0;
 
 // Últimos clientes registrados
 $ultimosClientes = $db->query("
@@ -142,75 +155,113 @@ $ultimosClientes = $db->query("
     <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Fichas de vehículos */
+        /* Esquinas cuadradas en todos los elementos */
+        .card, .stat-panel, .rent-big-card, .chart-card, .badge, .btn, .vehicle-card, .vehicle-price-item {
+            border-radius: 0 !important;
+        }
+
+        /* Fichas de vehículos - 3-4 columnas en PC */
         .vehicle-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            margin-top: 25px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        @media (max-width: 1400px) {
+            .vehicle-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 1100px) {
+            .vehicle-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            .vehicle-grid {
+                grid-template-columns: 1fr;
+            }
         }
         .vehicle-card {
             background: var(--card-bg);
-            border-radius: 12px;
             border: 1px solid var(--border-color);
             overflow: hidden;
             backdrop-filter: blur(10px);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
         }
         .vehicle-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(212, 168, 75, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(212, 168, 75, 0.1);
         }
+        .vehicle-card-status {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 2;
+        }
+        .vehicle-card-status.en_estudio { background: var(--gold); color: #000; }
+        .vehicle-card-status.en_preparacion { background: var(--warning); color: #000; }
+        .vehicle-card-status.en_venta { background: var(--green-accent); color: #000; }
+        .vehicle-card-status.reservado { background: var(--blue-accent); color: #fff; }
         .vehicle-card-image {
             width: 100%;
-            height: 160px;
-            object-fit: cover;
+            height: 140px;
             background: rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
         .vehicle-card-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            object-position: center;
         }
         .vehicle-card-image .no-image {
             color: var(--text-muted);
-            font-size: 2.5rem;
+            font-size: 2rem;
         }
         .vehicle-card-body {
-            padding: 18px;
+            padding: 12px;
         }
         .vehicle-card-title {
-            font-size: 1.05rem;
+            font-size: 0.9rem;
             font-weight: 600;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
             color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .vehicle-card-subtitle {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         .vehicle-card-prices {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 8px;
         }
         .vehicle-price-item {
             text-align: center;
-            padding: 10px;
+            padding: 6px;
             background: rgba(0,0,0,0.2);
-            border-radius: 8px;
         }
         .vehicle-price-label {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         .vehicle-price-value {
-            font-size: 1rem;
+            font-size: 0.85rem;
             font-weight: 600;
         }
         .vehicle-price-value.compra {
@@ -344,7 +395,7 @@ $ultimosClientes = $db->query("
                     <div class="rent-big-value fija"><?php echo formatMoney($rentabilidadGeneradaFija); ?></div>
                     <div class="rent-big-percent">▲ <?php echo number_format($rentabilidadFija, 1, ',', '.'); ?>%</div>
                     <div class="rent-big-capital">
-                        Capital invertido: <strong><?php echo formatMoney($capitalFija); ?></strong>
+                        Capital invertido: <strong><?php echo formatMoney($capitalInvertidoFija); ?></strong>
                     </div>
                 </div>
                 <div class="rent-big-card">
@@ -355,7 +406,7 @@ $ultimosClientes = $db->query("
                     <div class="rent-big-value variable"><?php echo formatMoney($rentabilidadGeneradaVariable); ?></div>
                     <div class="rent-big-percent">▲ <?php echo number_format($rentabilidadVariableActual, 1, ',', '.'); ?>%</div>
                     <div class="rent-big-capital">
-                        Capital invertido: <strong><?php echo formatMoney($capitalVariable); ?></strong>
+                        Capital invertido: <strong><?php echo formatMoney($capitalInvertidoVariable); ?></strong>
                     </div>
                 </div>
             </div>
@@ -447,7 +498,19 @@ $ultimosClientes = $db->query("
                                 $rentabilidadEuros = floatval($vehiculo['valor_venta_previsto']) - $costeTotal;
                                 $rentabilidadPorcentaje = $costeTotal > 0 ? ($rentabilidadEuros / $costeTotal) * 100 : 0;
                             ?>
+                            <?php
+                                $estadoTextos = [
+                                    'en_estudio' => 'En Estudio',
+                                    'en_preparacion' => 'En Preparación',
+                                    'en_venta' => 'En Venta',
+                                    'reservado' => 'Reservado',
+                                    'vendido' => 'Vendido'
+                                ];
+                            ?>
                             <div class="vehicle-card">
+                                <div class="vehicle-card-status <?php echo $vehiculo['estado']; ?>">
+                                    <?php echo $estadoTextos[$vehiculo['estado']] ?? ucfirst(str_replace('_', ' ', $vehiculo['estado'])); ?>
+                                </div>
                                 <div class="vehicle-card-image">
                                     <?php if ($vehiculo['foto']): ?>
                                         <img src="../<?php echo escape($vehiculo['foto']); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
