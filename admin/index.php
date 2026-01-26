@@ -40,9 +40,9 @@ $statsVehiculos = $db->query("
 
 // Vehículos activos para las fichas
 $vehiculosActivos = $db->query("
-    SELECT id, marca, modelo, version, anio, precio_compra, valor_venta_previsto, foto, estado
+    SELECT id, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado
     FROM vehiculos
-    WHERE estado IN ('en_venta', 'reservado')
+    WHERE estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado')
     ORDER BY created_at DESC
 ")->fetchAll();
 
@@ -439,11 +439,18 @@ $ultimosClientes = $db->query("
                         </div>
                     <?php else: ?>
                         <div class="vehicle-grid">
-                            <?php foreach ($vehiculosActivos as $vehiculo): ?>
+                            <?php foreach ($vehiculosActivos as $vehiculo):
+                                // Calcular rentabilidad: Venta prevista - Compra - Gastos
+                                $gastosTotal = floatval($vehiculo['gastos'] ?? 0);
+                                if ($gastosTotal == 0) $gastosTotal = floatval($vehiculo['prevision_gastos'] ?? 0);
+                                $costeTotal = floatval($vehiculo['precio_compra']) + $gastosTotal;
+                                $rentabilidadEuros = floatval($vehiculo['valor_venta_previsto']) - $costeTotal;
+                                $rentabilidadPorcentaje = $costeTotal > 0 ? ($rentabilidadEuros / $costeTotal) * 100 : 0;
+                            ?>
                             <div class="vehicle-card">
                                 <div class="vehicle-card-image">
                                     <?php if ($vehiculo['foto']): ?>
-                                        <img src="../uploads/vehiculos/<?php echo escape($vehiculo['foto']); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
+                                        <img src="../<?php echo escape($vehiculo['foto']); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
                                     <?php else: ?>
                                         <span class="no-image">🚗</span>
                                     <?php endif; ?>
@@ -452,15 +459,29 @@ $ultimosClientes = $db->query("
                                     <div class="vehicle-card-title"><?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?></div>
                                     <div class="vehicle-card-subtitle">
                                         <?php echo escape($vehiculo['version'] ?? ''); ?> · <?php echo escape($vehiculo['anio']); ?>
+                                        <?php if ($vehiculo['kilometros']): ?>
+                                            · <?php echo number_format($vehiculo['kilometros'], 0, ',', '.'); ?> km
+                                        <?php endif; ?>
                                     </div>
                                     <div class="vehicle-card-prices">
                                         <div class="vehicle-price-item">
-                                            <div class="vehicle-price-label">Compra</div>
-                                            <div class="vehicle-price-value compra"><?php echo formatMoney($vehiculo['precio_compra']); ?></div>
+                                            <div class="vehicle-price-label">Compra + Gastos</div>
+                                            <div class="vehicle-price-value compra"><?php echo formatMoney($costeTotal); ?></div>
                                         </div>
                                         <div class="vehicle-price-item">
-                                            <div class="vehicle-price-label">Venta</div>
+                                            <div class="vehicle-price-label">Venta Prevista</div>
                                             <div class="vehicle-price-value venta"><?php echo formatMoney($vehiculo['valor_venta_previsto']); ?></div>
+                                        </div>
+                                    </div>
+                                    <div class="vehicle-card-rentabilidad" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); text-align: center;">
+                                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Rentabilidad</div>
+                                        <div style="display: flex; justify-content: center; gap: 15px;">
+                                            <span style="font-weight: 700; color: <?php echo $rentabilidadEuros >= 0 ? 'var(--green-accent)' : 'var(--danger)'; ?>;">
+                                                <?php echo $rentabilidadEuros >= 0 ? '+' : ''; ?><?php echo formatMoney($rentabilidadEuros); ?>
+                                            </span>
+                                            <span style="font-weight: 600; color: <?php echo $rentabilidadPorcentaje >= 0 ? 'var(--green-accent)' : 'var(--danger)'; ?>;">
+                                                (<?php echo $rentabilidadPorcentaje >= 0 ? '+' : ''; ?><?php echo number_format($rentabilidadPorcentaje, 1, ',', '.'); ?>%)
+                                            </span>
                                         </div>
                                     </div>
                                 </div>

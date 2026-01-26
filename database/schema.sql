@@ -99,8 +99,10 @@ CREATE TABLE IF NOT EXISTS `vehiculos` (
   `modelo` VARCHAR(100) NOT NULL,
   `version` VARCHAR(100) DEFAULT NULL,
   `anio` YEAR NOT NULL,
+  `kilometros` INT UNSIGNED DEFAULT NULL COMMENT 'Kilómetros del vehículo',
   `precio_compra` DECIMAL(15,2) NOT NULL,
-  `gastos` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `prevision_gastos` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Previsión de gastos estimados',
+  `gastos` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Gastos reales',
   `valor_venta_previsto` DECIMAL(15,2) NOT NULL,
   `precio_venta_real` DECIMAL(15,2) DEFAULT NULL,
   `beneficio` DECIMAL(15,2) GENERATED ALWAYS AS (
@@ -110,7 +112,7 @@ CREATE TABLE IF NOT EXISTS `vehiculos` (
     END
   ) STORED,
   `foto` VARCHAR(255) DEFAULT NULL,
-  `estado` ENUM('en_venta', 'vendido', 'reservado') NOT NULL DEFAULT 'en_venta',
+  `estado` ENUM('en_estudio', 'en_preparacion', 'en_venta', 'vendido', 'reservado') NOT NULL DEFAULT 'en_estudio',
   `fecha_compra` DATE DEFAULT NULL,
   `fecha_venta` DATE DEFAULT NULL,
   `notas` TEXT DEFAULT NULL,

@@ -26,11 +26,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $modelo = cleanInput($_POST['modelo'] ?? '');
             $version = cleanInput($_POST['version'] ?? '');
             $anio = intval($_POST['anio'] ?? date('Y'));
+            $kilometros = !empty($_POST['kilometros']) ? intval($_POST['kilometros']) : null;
             $precio_compra = floatval($_POST['precio_compra'] ?? 0);
+            $prevision_gastos = floatval($_POST['prevision_gastos'] ?? 0);
             $gastos = floatval($_POST['gastos'] ?? 0);
             $valor_venta_previsto = floatval($_POST['valor_venta_previsto'] ?? 0);
             $precio_venta_real = !empty($_POST['precio_venta_real']) ? floatval($_POST['precio_venta_real']) : null;
-            $estado = cleanInput($_POST['estado'] ?? 'en_venta');
+            $estado = cleanInput($_POST['estado'] ?? 'en_estudio');
             $fecha_compra = !empty($_POST['fecha_compra']) ? $_POST['fecha_compra'] : null;
             $fecha_venta = !empty($_POST['fecha_venta']) ? $_POST['fecha_venta'] : null;
             $notas = cleanInput($_POST['notas'] ?? '');
@@ -61,10 +63,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 try {
                     if ($action === 'crear') {
-                        $sql = "INSERT INTO vehiculos (matricula, marca, modelo, version, anio, precio_compra, gastos, valor_venta_previsto, precio_venta_real, estado, fecha_compra, fecha_venta, notas, foto)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $sql = "INSERT INTO vehiculos (matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, estado, fecha_compra, fecha_venta, notas, foto)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $precio_compra, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto]);
+                        $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto]);
                         $exito = 'Vehículo creado correctamente.';
                     } else {
                         // Obtener foto actual si no se sube nueva
@@ -75,9 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $foto = $actual['foto'] ?? null;
                         }
 
-                        $sql = "UPDATE vehiculos SET matricula=?, marca=?, modelo=?, version=?, anio=?, precio_compra=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, fecha_compra=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
+                        $sql = "UPDATE vehiculos SET matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, fecha_compra=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $precio_compra, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto, $id]);
+                        $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto, $id]);
                         $exito = 'Vehículo actualizado correctamente.';
                     }
                 } catch (Exception $e) {
@@ -186,10 +188,11 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                         <th>Foto</th>
                                         <th>Vehículo</th>
                                         <th>Matrícula</th>
-                                        <th>Año</th>
-                                        <th>Precio Compra</th>
+                                        <th>Año / Km</th>
+                                        <th>Compra</th>
+                                        <th>Prev. Gastos</th>
                                         <th>Gastos</th>
-                                        <th>Venta Prevista</th>
+                                        <th>Venta Prev.</th>
                                         <th>Beneficio</th>
                                         <th>Estado</th>
                                         <th>Acciones</th>
@@ -212,8 +215,14 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             <?php endif; ?>
                                         </td>
                                         <td><?php echo $v['matricula'] ? escape($v['matricula']) : '<span style="color:var(--text-muted);">-</span>'; ?></td>
-                                        <td><?php echo escape($v['anio']); ?></td>
+                                        <td>
+                                            <?php echo escape($v['anio']); ?>
+                                            <?php if ($v['kilometros']): ?>
+                                                <br><small style="color: var(--text-muted);"><?php echo number_format($v['kilometros'], 0, ',', '.'); ?> km</small>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?php echo formatMoney($v['precio_compra']); ?></td>
+                                        <td style="color: var(--text-muted);"><?php echo formatMoney($v['prevision_gastos'] ?? 0); ?></td>
                                         <td><?php echo formatMoney($v['gastos']); ?></td>
                                         <td><?php echo formatMoney($v['valor_venta_previsto']); ?></td>
                                         <td>
@@ -228,13 +237,22 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                         <td>
                                             <?php
                                             $estadoBadge = [
+                                                'en_estudio' => 'badge-gold',
+                                                'en_preparacion' => 'badge-warning',
                                                 'en_venta' => 'badge-success',
-                                                'vendido' => 'badge-info',
-                                                'reservado' => 'badge-warning'
+                                                'reservado' => 'badge-info',
+                                                'vendido' => 'badge-info'
+                                            ];
+                                            $estadoTexto = [
+                                                'en_estudio' => 'En Estudio',
+                                                'en_preparacion' => 'En Preparación',
+                                                'en_venta' => 'En Venta',
+                                                'reservado' => 'Reservado',
+                                                'vendido' => 'Vendido'
                                             ];
                                             ?>
                                             <span class="badge <?php echo $estadoBadge[$v['estado']] ?? 'badge-info'; ?>">
-                                                <?php echo ucfirst(str_replace('_', ' ', $v['estado'])); ?>
+                                                <?php echo $estadoTexto[$v['estado']] ?? ucfirst(str_replace('_', ' ', $v['estado'])); ?>
                                             </span>
                                         </td>
                                         <td>
@@ -300,10 +318,17 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Año *</label>
-                        <input type="number" name="anio" required min="1990" max="2030" style="max-width: 150px;"
-                               value="<?php echo escape($vehiculoEditar['anio'] ?? date('Y')); ?>">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Año *</label>
+                            <input type="number" name="anio" required min="1990" max="2030"
+                                   value="<?php echo escape($vehiculoEditar['anio'] ?? date('Y')); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Kilómetros</label>
+                            <input type="number" name="kilometros" min="0" placeholder="Ej: 50000"
+                                   value="<?php echo escape($vehiculoEditar['kilometros'] ?? ''); ?>">
+                        </div>
                     </div>
 
                     <div class="form-row">
@@ -313,30 +338,38 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                    value="<?php echo escape($vehiculoEditar['precio_compra'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
-                            <label>Gastos (€)</label>
-                            <input type="number" name="gastos" step="0.01" min="0"
-                                   value="<?php echo escape($vehiculoEditar['gastos'] ?? '0'); ?>">
+                            <label>Previsión de Gastos (€)</label>
+                            <input type="number" name="prevision_gastos" step="0.01" min="0"
+                                   value="<?php echo escape($vehiculoEditar['prevision_gastos'] ?? '0'); ?>">
                         </div>
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
+                            <label>Gastos Reales (€)</label>
+                            <input type="number" name="gastos" step="0.01" min="0"
+                                   value="<?php echo escape($vehiculoEditar['gastos'] ?? '0'); ?>">
+                        </div>
+                        <div class="form-group">
                             <label>Valor Venta Previsto (€) *</label>
                             <input type="number" name="valor_venta_previsto" required step="0.01" min="0"
                                    value="<?php echo escape($vehiculoEditar['valor_venta_previsto'] ?? ''); ?>">
                         </div>
-                        <div class="form-group">
-                            <label>Precio Venta Real (€)</label>
-                            <input type="number" name="precio_venta_real" step="0.01" min="0"
-                                   value="<?php echo escape($vehiculoEditar['precio_venta_real'] ?? ''); ?>"
-                                   placeholder="Solo si ya se vendió">
-                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Precio Venta Real (€)</label>
+                        <input type="number" name="precio_venta_real" step="0.01" min="0" style="max-width: 200px;"
+                               value="<?php echo escape($vehiculoEditar['precio_venta_real'] ?? ''); ?>"
+                               placeholder="Solo si ya se vendió">
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
                             <label>Estado</label>
                             <select name="estado">
+                                <option value="en_estudio" <?php echo ($vehiculoEditar['estado'] ?? 'en_estudio') === 'en_estudio' ? 'selected' : ''; ?>>En Estudio</option>
+                                <option value="en_preparacion" <?php echo ($vehiculoEditar['estado'] ?? '') === 'en_preparacion' ? 'selected' : ''; ?>>En Preparación</option>
                                 <option value="en_venta" <?php echo ($vehiculoEditar['estado'] ?? '') === 'en_venta' ? 'selected' : ''; ?>>En Venta</option>
                                 <option value="reservado" <?php echo ($vehiculoEditar['estado'] ?? '') === 'reservado' ? 'selected' : ''; ?>>Reservado</option>
                                 <option value="vendido" <?php echo ($vehiculoEditar['estado'] ?? '') === 'vendido' ? 'selected' : ''; ?>>Vendido</option>
