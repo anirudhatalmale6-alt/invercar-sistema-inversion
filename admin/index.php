@@ -14,15 +14,9 @@ $db = getDB();
 $statsClientes = $db->query("
     SELECT
         COUNT(*) as total,
-        COALESCE(SUM(capital_total), 0) as capital_total,
-        COALESCE(SUM(capital_invertido), 0) as capital_invertido,
-        COALESCE(SUM(capital_reserva), 0) as capital_reserva,
-        COALESCE(SUM(CASE WHEN tipo_inversion = 'fija' THEN capital_total ELSE 0 END), 0) as capital_fija,
-        COALESCE(SUM(CASE WHEN tipo_inversion = 'variable' THEN capital_total ELSE 0 END), 0) as capital_variable,
-        COALESCE(SUM(CASE WHEN tipo_inversion = 'fija' THEN capital_invertido ELSE 0 END), 0) as invertido_fija,
-        COALESCE(SUM(CASE WHEN tipo_inversion = 'variable' THEN capital_invertido ELSE 0 END), 0) as invertido_variable,
-        COALESCE(SUM(CASE WHEN tipo_inversion = 'fija' THEN capital_reserva ELSE 0 END), 0) as reserva_fija,
-        COALESCE(SUM(CASE WHEN tipo_inversion = 'variable' THEN capital_reserva ELSE 0 END), 0) as reserva_variable,
+        COALESCE(SUM(capital_invertido), 0) as capital_total,
+        COALESCE(SUM(CASE WHEN tipo_inversion = 'fija' THEN capital_invertido ELSE 0 END), 0) as capital_fija,
+        COALESCE(SUM(CASE WHEN tipo_inversion = 'variable' THEN capital_invertido ELSE 0 END), 0) as capital_variable,
         SUM(CASE WHEN tipo_inversion = 'fija' THEN 1 ELSE 0 END) as clientes_fija,
         SUM(CASE WHEN tipo_inversion = 'variable' THEN 1 ELSE 0 END) as clientes_variable
     FROM clientes WHERE activo = 1 AND registro_completo = 1
@@ -287,7 +281,7 @@ $ultimosClientes = $db->query("
         }
         .rent-big-card {
             background: var(--card-bg);
-            border-radius: 12px;
+            border-radius: 0;
             border: 1px solid var(--border-color);
             padding: 25px;
             backdrop-filter: blur(10px);
@@ -332,7 +326,7 @@ $ultimosClientes = $db->query("
             gap: 5px;
             padding: 5px 12px;
             background: rgba(34, 197, 94, 0.15);
-            border-radius: 20px;
+            border-radius: 0;
             font-size: 0.85rem;
             font-weight: 600;
             color: var(--green-accent);
@@ -562,16 +556,16 @@ $ultimosClientes = $db->query("
                             <div class="stat-panel-icon">€</div>
                             <div class="stat-panel-title">Capital</div>
                         </div>
-                        <div class="stat-panel-value"><?php echo formatMoney($statsClientes['capital_total'] ?? 0); ?></div>
+                        <div class="stat-panel-value"><?php echo formatMoney($capitalInvertidoVehiculos + $capitalReserva); ?></div>
 
                         <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Por tipo de inversión</div>
                         <div class="stat-panel-row">
                             <span class="stat-panel-label fija">Rentabilidad Fija</span>
-                            <span class="stat-panel-amount fija"><?php echo formatMoney($statsClientes['capital_fija'] ?? 0); ?></span>
+                            <span class="stat-panel-amount fija"><?php echo formatMoney($capitalFija); ?></span>
                         </div>
                         <div class="stat-panel-row">
                             <span class="stat-panel-label variable">Rentabilidad Variable</span>
-                            <span class="stat-panel-amount variable"><?php echo formatMoney($statsClientes['capital_variable'] ?? 0); ?></span>
+                            <span class="stat-panel-amount variable"><?php echo formatMoney($capitalVariable); ?></span>
                         </div>
 
                         <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Estado del capital</div>
@@ -580,14 +574,14 @@ $ultimosClientes = $db->query("
                                 <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green-accent); margin-right:8px;"></span>
                                 Capital Invertido
                             </span>
-                            <span class="stat-panel-amount" style="color: var(--green-accent);"><?php echo formatMoney($statsVehiculos['capital_invertido_vehiculos'] ?? 0); ?></span>
+                            <span class="stat-panel-amount" style="color: var(--green-accent);"><?php echo formatMoney($capitalInvertidoVehiculos); ?></span>
                         </div>
                         <div class="stat-panel-row">
                             <span class="stat-panel-label" style="color: var(--gold);">
                                 <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--gold); margin-right:8px;"></span>
                                 Capital en Reserva
                             </span>
-                            <span class="stat-panel-amount" style="color: var(--gold);"><?php echo formatMoney(max(0, ($statsClientes['capital_total'] ?? 0) - ($statsVehiculos['capital_invertido_vehiculos'] ?? 0))); ?></span>
+                            <span class="stat-panel-amount" style="color: var(--gold);"><?php echo formatMoney($capitalReserva); ?></span>
                         </div>
                     </div>
 

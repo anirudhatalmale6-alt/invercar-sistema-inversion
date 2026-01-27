@@ -390,7 +390,7 @@ a {
 /* Cards Mejoradas */
 .card {
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: 0;
     border: 1px solid var(--border-color);
     overflow: hidden;
     backdrop-filter: blur(10px);
@@ -416,7 +416,7 @@ a {
 /* Stat Cards - Panel lateral */
 .stat-panel {
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: 0;
     border: 1px solid var(--border-color);
     padding: 25px;
     backdrop-filter: blur(10px);
@@ -510,7 +510,7 @@ a {
 
 .rent-card {
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: 0;
     border: 1px solid var(--border-color);
     padding: 25px;
     text-align: center;
@@ -575,7 +575,7 @@ a {
 /* Gráfico de Rentabilidad Semanal */
 .chart-card {
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: 0;
     border: 1px solid var(--border-color);
     padding: 20px;
     backdrop-filter: blur(10px);
@@ -731,7 +731,7 @@ table tbody tr:last-child td {
 .badge {
     display: inline-block;
     padding: 5px 12px;
-    border-radius: 20px;
+    border-radius: 0;
     font-size: 0.75rem;
     font-weight: 600;
 }
@@ -770,7 +770,7 @@ table tbody tr:last-child td {
 .btn {
     display: inline-block;
     padding: 10px 22px;
-    border-radius: 8px;
+    border-radius: 0;
     font-weight: 500;
     font-size: 0.9rem;
     cursor: pointer;
@@ -781,7 +781,7 @@ table tbody tr:last-child td {
 .btn-sm {
     padding: 6px 14px;
     font-size: 0.8rem;
-    border-radius: 6px;
+    border-radius: 0;
 }
 
 .btn-primary {
@@ -821,7 +821,7 @@ table tbody tr:last-child td {
     align-items: center;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 0 15px;
     margin-bottom: 20px;
 }
@@ -868,7 +868,7 @@ table tbody tr:last-child td {
     width: 100%;
     padding: 12px 15px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 0;
     background: rgba(0, 0, 0, 0.3);
     color: var(--text-light);
     font-size: 0.95rem;
@@ -892,7 +892,7 @@ table tbody tr:last-child td {
 /* Alerts */
 .alert {
     padding: 15px 20px;
-    border-radius: 8px;
+    border-radius: 0;
     margin-bottom: 20px;
 }
 
@@ -920,7 +920,7 @@ table tbody tr:last-child td {
 .pagination a,
 .pagination span {
     padding: 8px 14px;
-    border-radius: 6px;
+    border-radius: 0;
     background: rgba(0, 0, 0, 0.3);
     color: var(--text-muted);
     border: 1px solid var(--border-color);
@@ -944,7 +944,7 @@ table tbody tr:last-child td {
     width: 60px;
     height: 45px;
     object-fit: cover;
-    border-radius: 6px;
+    border-radius: 0;
 }
 
 /* Actions */
@@ -987,7 +987,7 @@ table tbody tr:last-child td {
 
 .modal {
     background: var(--card-bg-solid);
-    border-radius: 12px;
+    border-radius: 0;
     width: 100%;
     max-width: 550px;
     max-height: 90vh;
@@ -1044,7 +1044,7 @@ table tbody tr:last-child td {
 
 .stat-card {
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: 0;
     padding: 22px;
     border: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
@@ -1059,7 +1059,7 @@ table tbody tr:last-child td {
 .stat-card .stat-icon {
     width: 42px;
     height: 42px;
-    border-radius: 10px;
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
