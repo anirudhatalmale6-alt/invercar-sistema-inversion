@@ -733,7 +733,7 @@ $ultimosClientes = $db->query("
                                             · <?php echo number_format($vehiculo['kilometros'], 0, ',', '.'); ?> km
                                         <?php endif; ?>
                                     </div>
-                                    <div class="vehicle-card-prices">
+                                    <div class="vehicle-card-prices" style="grid-template-columns: 1fr 1fr;">
                                         <div class="vehicle-price-item">
                                             <div class="vehicle-price-label">Compra</div>
                                             <div class="vehicle-price-value compra"><?php echo formatMoney($vehiculo['precio_compra']); ?></div>
@@ -741,6 +741,14 @@ $ultimosClientes = $db->query("
                                         <div class="vehicle-price-item">
                                             <div class="vehicle-price-label">Venta Prevista</div>
                                             <div class="vehicle-price-value venta"><?php echo formatMoney($vehiculo['valor_venta_previsto']); ?></div>
+                                        </div>
+                                        <div class="vehicle-price-item">
+                                            <div class="vehicle-price-label">Gastos</div>
+                                            <div class="vehicle-price-value" style="color: var(--danger);"><?php echo formatMoney($vehiculo['gastos']); ?></div>
+                                        </div>
+                                        <div class="vehicle-price-item">
+                                            <div class="vehicle-price-label">Prev. Gastos</div>
+                                            <div class="vehicle-price-value" style="color: var(--text-muted);"><?php echo formatMoney($vehiculo['prevision_gastos'] ?? 0); ?></div>
                                         </div>
                                     </div>
                                     <div class="vehicle-card-rentabilidad" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); text-align: center;">

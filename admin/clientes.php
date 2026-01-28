@@ -19,7 +19,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     $params = [];
 
     if ($filtro) {
-        $sql .= " AND (c.nombre LIKE ? OR c.apellidos LIKE ? OR c.email LIKE ? OR c.dni LIKE ?)";
+        $sql .= " AND (c.nombre LIKE ? OR c.apellidos LIKE ? OR c.email LIKE ? OR c.telefono LIKE ?)";
         $params = ["%$filtro%", "%$filtro%", "%$filtro%", "%$filtro%"];
     }
 
@@ -99,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $activo = intval($_POST['activo'] ?? 1);
 
             // Validaciones
-            if (empty($nombre) || empty($apellidos) || empty($email)) {
-                $error = 'Nombre, apellidos y email son obligatorios.';
+            if (empty($nombre) || empty($email)) {
+                $error = 'Nombre y email son obligatorios.';
             } elseif (!validarEmail($email)) {
                 $error = 'El email no es válido.';
             } else {
@@ -185,7 +185,7 @@ $sql = "SELECT * FROM clientes WHERE registro_completo = 1";
 $params = [];
 
 if ($filtro) {
-    $sql .= " AND (nombre LIKE ? OR apellidos LIKE ? OR email LIKE ? OR dni LIKE ?)";
+    $sql .= " AND (nombre LIKE ? OR apellidos LIKE ? OR email LIKE ? OR telefono LIKE ?)";
     $params = ["%$filtro%", "%$filtro%", "%$filtro%", "%$filtro%"];
 }
 
@@ -277,7 +277,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                 <!-- Detalle del cliente -->
                 <div class="card" style="margin-bottom: 20px;">
                     <div class="card-header">
-                        <h2>Detalle: <?php echo escape($clienteDetalle['nombre'] . ' ' . $clienteDetalle['apellidos']); ?></h2>
+                        <h2>Detalle: <?php echo escape($clienteDetalle['nombre']); ?><?php if ($clienteDetalle['apellidos']): ?> <small style="font-weight: normal; color: var(--text-muted);">(<?php echo escape($clienteDetalle['apellidos']); ?>)</small><?php endif; ?></h2>
                         <div class="actions">
                             <a href="?editar=<?php echo $clienteDetalle['id']; ?>" class="btn btn-sm btn-outline">Editar</a>
                             <a href="clientes.php" class="btn btn-outline">← Volver</a>
@@ -287,6 +287,9 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
                             <div>
                                 <h4 style="color: var(--text-muted); margin-bottom: 10px;">Datos personales</h4>
+                                <?php if ($clienteDetalle['apellidos']): ?>
+                                <p><strong>Empresa:</strong> <?php echo escape($clienteDetalle['apellidos']); ?></p>
+                                <?php endif; ?>
                                 <p><strong>Email:</strong> <?php echo escape($clienteDetalle['email']); ?></p>
                                 <p><strong>DNI:</strong> <?php echo escape($clienteDetalle['dni']); ?></p>
                                 <p><strong>Teléfono:</strong> <?php echo escape($clienteDetalle['telefono']); ?></p>
@@ -401,7 +404,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                 <div class="card" style="margin-bottom: 20px;">
                     <div class="card-body" style="padding: 15px;">
                         <form method="GET" style="display: flex; gap: 10px; align-items: center;">
-                            <input type="text" name="filtro" placeholder="Buscar por nombre, email o DNI..."
+                            <input type="text" name="filtro" placeholder="Buscar por nombre, email o teléfono..."
                                    value="<?php echo escape($filtro); ?>" style="flex: 1; padding: 10px;">
                             <button type="submit" class="btn btn-primary">Buscar</button>
                             <?php if ($filtro): ?>
@@ -460,8 +463,8 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                         ?>
                                         <tr>
                                             <td>
-                                                <strong><?php echo escape($c['nombre'] . ' ' . $c['apellidos']); ?></strong>
-                                                <br><small style="color: var(--text-muted);"><?php echo escape($c['dni']); ?></small>
+                                                <strong><?php echo escape($c['nombre']); ?></strong>
+                                                <?php if ($c['apellidos']): ?><br><small style="color: var(--text-muted);"><?php echo escape($c['apellidos']); ?></small><?php endif; ?>
                                             </td>
                                             <td><?php echo escape($c['email']); ?></td>
                                             <td style="font-weight: bold; color: var(--gold);"><?php echo formatMoney($capTotal); ?></td>
@@ -514,13 +517,13 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Nombre *</label>
+                            <label>Nombre y Apellidos *</label>
                             <input type="text" name="nombre" required
                                    value="<?php echo escape($clienteEditar['nombre'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
-                            <label>Apellidos *</label>
-                            <input type="text" name="apellidos" required
+                            <label>Empresa</label>
+                            <input type="text" name="apellidos"
                                    value="<?php echo escape($clienteEditar['apellidos'] ?? ''); ?>">
                         </div>
                     </div>

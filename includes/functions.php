@@ -88,26 +88,29 @@ function getEstadisticasSistema() {
 
     // Número de clientes activos con registro completo
     $stmt = $db->query("SELECT COUNT(*) as total FROM clientes WHERE activo = 1 AND registro_completo = 1");
-    $clientesActivos = $stmt->fetch()['total'];
+    $clientesActivos = $stmt->fetch()['total'] ?? 0;
 
-    // Capital total invertido
-    $stmt = $db->query("SELECT SUM(capital_invertido) as total FROM clientes WHERE activo = 1 AND registro_completo = 1");
+    // Capital total invertido (desde tabla capital)
+    $stmt = $db->query("SELECT COALESCE(SUM(importe_ingresado) - SUM(importe_retirado), 0) as total FROM capital WHERE activo = 1");
     $capitalTotal = $stmt->fetch()['total'] ?? 0;
 
-    // Capital por tipo
-    $stmt = $db->query("SELECT tipo_inversion, SUM(capital_invertido) as total FROM clientes WHERE activo = 1 AND registro_completo = 1 GROUP BY tipo_inversion");
-    $capitalPorTipo = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    // Capital por tipo (desde tabla capital)
+    $stmt = $db->query("SELECT tipo_inversion, COALESCE(SUM(importe_ingresado) - SUM(importe_retirado), 0) as total FROM capital WHERE activo = 1 GROUP BY tipo_inversion");
+    $capitalPorTipo = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $capitalPorTipo[$row['tipo_inversion']] = $row['total'];
+    }
 
     // Capital invertido en vehículos (en venta + reservados)
-    $stmt = $db->query("SELECT SUM(precio_compra + gastos) as total FROM vehiculos WHERE estado IN ('en_venta', 'reservado')");
+    $stmt = $db->query("SELECT COALESCE(SUM(precio_compra + COALESCE(gastos, 0)), 0) as total FROM vehiculos WHERE estado IN ('en_venta', 'reservado')");
     $capitalEnVehiculos = $stmt->fetch()['total'] ?? 0;
 
     // Número de vehículos comprados pero no vendidos (bienes raíces)
-    $stmt = $db->query("SELECT COUNT(*) as total FROM vehiculos WHERE estado IN ('en_venta', 'reservado')");
+    $stmt = $db->query("SELECT COUNT(*) as total FROM vehiculos WHERE estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado')");
     $vehiculosActuales = $stmt->fetch()['total'] ?? 0;
 
     // Valor de venta previsto de vehículos
-    $stmt = $db->query("SELECT SUM(valor_venta_previsto) as total FROM vehiculos WHERE estado IN ('en_venta', 'reservado')");
+    $stmt = $db->query("SELECT COALESCE(SUM(valor_venta_previsto), 0) as total FROM vehiculos WHERE estado IN ('en_venta', 'reservado')");
     $valorVentaPrevisto = $stmt->fetch()['total'] ?? 0;
 
     // Capital en reserva
@@ -122,7 +125,7 @@ function getEstadisticasSistema() {
 
     // Calcular rentabilidad anual basada en vehículos vendidos
     // Fórmula: (beneficio total / inversión total) * 100, anualizado
-    $stmt = $db->query("SELECT SUM(precio_venta_real - precio_compra - gastos) as beneficio, SUM(precio_compra + gastos) as inversion FROM vehiculos WHERE estado = 'vendido' AND precio_venta_real > 0");
+    $stmt = $db->query("SELECT COALESCE(SUM(precio_venta_real - precio_compra - COALESCE(gastos, 0)), 0) as beneficio, COALESCE(SUM(precio_compra + COALESCE(gastos, 0)), 0) as inversion FROM vehiculos WHERE estado = 'vendido' AND precio_venta_real > 0");
     $ventasData = $stmt->fetch();
     $beneficioTotal = $ventasData['beneficio'] ?? 0;
     $inversionTotal = $ventasData['inversion'] ?? 0;
