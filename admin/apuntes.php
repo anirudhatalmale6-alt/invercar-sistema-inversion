@@ -13,14 +13,20 @@ $error = '';
 $exito = '';
 
 // Obtener conceptos para el dropdown
-$conceptos = $db->query("SELECT id, concepto FROM conceptos WHERE activo = 1 ORDER BY concepto")->fetchAll();
+$conceptos = $db->query("SELECT id, concepto, tipologia FROM conceptos WHERE activo = 1 ORDER BY concepto")->fetchAll();
 
-// Identificar IDs de conceptos de capital para validación
+// Identificar IDs de conceptos por tipología para validación
 $conceptosCapital = [];
+$conceptosGastoVehiculo = [];
 foreach ($conceptos as $c) {
     $conceptoLower = strtolower($c['concepto']);
+    // Conceptos de capital (requieren cliente)
     if (strpos($conceptoLower, 'ingreso de capital') !== false || strpos($conceptoLower, 'retirada de capital') !== false) {
         $conceptosCapital[$c['id']] = $c['concepto'];
+    }
+    // Conceptos de gasto vehículo (requieren vehículo y suman a gastos)
+    if (($c['tipologia'] ?? 'gasto') === 'gasto_vehiculo') {
+        $conceptosGastoVehiculo[$c['id']] = $c['concepto'];
     }
 }
 
@@ -51,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Validaciones
             $esConceptoCapital = isset($conceptosCapital[$concepto_id]);
+            $esGastoVehiculo = isset($conceptosGastoVehiculo[$concepto_id]);
 
             if (empty($fecha)) {
                 $error = 'La fecha es obligatoria.';
@@ -60,6 +67,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Tipo de apunte no válido.';
             } elseif ($esConceptoCapital && empty($cliente_id)) {
                 $error = 'Para Ingreso/Retirada de capital debe seleccionar un cliente.';
+            } elseif ($esGastoVehiculo && empty($vehiculo_id)) {
+                $error = 'Para Gasto de Vehículo debe seleccionar un vehículo.';
             } else {
                 try {
                     if ($action === 'crear') {
@@ -83,7 +92,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
 
-                        $exito = 'Apunte creado correctamente.' . ($esConceptoCapital ? ' Se ha creado también el registro de capital.' : '');
+                        // Si es gasto de vehículo, sumar a los gastos reales del vehículo
+                        if ($esGastoVehiculo && $vehiculo_id) {
+                            $db->prepare("UPDATE vehiculos SET gastos = gastos + ? WHERE id = ?")->execute([$importe, $vehiculo_id]);
+                        }
+
+                        $mensajeExtra = '';
+                        if ($esConceptoCapital) $mensajeExtra .= ' Se ha creado también el registro de capital.';
+                        if ($esGastoVehiculo) $mensajeExtra .= ' Se ha actualizado el gasto del vehículo.';
+                        $exito = 'Apunte creado correctamente.' . $mensajeExtra;
                     } else {
                         $sql = "UPDATE apuntes SET fecha=?, concepto_id=?, descripcion=?, cliente_id=?, vehiculo_id=?, importe=?, tipo_apunte=?, realizado=?, activo=? WHERE id=?";
                         $stmt = $db->prepare($sql);
@@ -529,19 +546,33 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 
         // IDs de conceptos de capital (requieren cliente)
         var conceptosCapitalIds = <?php echo json_encode(array_keys($conceptosCapital)); ?>;
+        // IDs de conceptos de gasto vehículo (requieren vehículo)
+        var conceptosGastoVehiculoIds = <?php echo json_encode(array_keys($conceptosGastoVehiculo)); ?>;
 
-        // Validar cliente cuando se selecciona concepto de capital
+        // Validar cliente/vehículo cuando se selecciona concepto
         document.querySelector('select[name="concepto_id"]').addEventListener('change', function() {
             var conceptoId = parseInt(this.value);
             var clienteSelect = document.querySelector('select[name="cliente_id"]');
             var clienteLabel = clienteSelect.previousElementSibling;
+            var vehiculoSelect = document.querySelector('select[name="vehiculo_id"]');
+            var vehiculoLabel = vehiculoSelect.previousElementSibling;
 
+            // Cliente requerido para conceptos de capital
             if (conceptosCapitalIds.includes(conceptoId)) {
                 clienteSelect.required = true;
                 clienteLabel.innerHTML = 'Cliente <span style="color: var(--danger);">* (obligatorio para capital)</span>';
             } else {
                 clienteSelect.required = false;
                 clienteLabel.innerHTML = 'Cliente';
+            }
+
+            // Vehículo requerido para conceptos de gasto vehículo
+            if (conceptosGastoVehiculoIds.includes(conceptoId)) {
+                vehiculoSelect.required = true;
+                vehiculoLabel.innerHTML = 'Vehículo <span style="color: var(--danger);">* (obligatorio - se sumará a gastos)</span>';
+            } else {
+                vehiculoSelect.required = false;
+                vehiculoLabel.innerHTML = 'Vehículo';
             }
         });
 

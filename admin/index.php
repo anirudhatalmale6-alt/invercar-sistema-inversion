@@ -61,6 +61,18 @@ $vehiculosActivos = $db->query("
     ORDER BY created_at DESC
 ")->fetchAll();
 
+// Obtener fotos adicionales de cada vehículo
+$fotosPorVehiculo = [];
+if (!empty($vehiculosActivos)) {
+    $vehiculoIds = array_column($vehiculosActivos, 'id');
+    $placeholders = implode(',', array_fill(0, count($vehiculoIds), '?'));
+    $stmtFotos = $db->prepare("SELECT vehiculo_id, foto FROM vehiculo_fotos WHERE vehiculo_id IN ($placeholders) ORDER BY vehiculo_id, orden");
+    $stmtFotos->execute($vehiculoIds);
+    foreach ($stmtFotos->fetchAll() as $f) {
+        $fotosPorVehiculo[$f['vehiculo_id']][] = $f['foto'];
+    }
+}
+
 // Obtener capital invertido por vehículo (desde tabla capital)
 $capitalPorVehiculo = [];
 $stmtCapVeh = $db->query("
@@ -282,6 +294,71 @@ $ultimosClientes = $db->query("
         .vehicle-card-image .no-image {
             color: var(--text-muted);
             font-size: 2rem;
+        }
+        /* Photo gallery slider */
+        .vehicle-photo-gallery {
+            display: flex;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            gap: 0;
+            height: 100%;
+        }
+        .vehicle-photo-gallery::-webkit-scrollbar {
+            display: none;
+        }
+        .vehicle-photo-gallery img {
+            flex: 0 0 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+        .vehicle-card-image {
+            position: relative;
+        }
+        .vehicle-photo-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .vehicle-card:hover .vehicle-photo-nav {
+            opacity: 1;
+        }
+        .vehicle-photo-nav.prev { left: 5px; }
+        .vehicle-photo-nav.next { right: 5px; }
+        .vehicle-photo-dots {
+            position: absolute;
+            bottom: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            z-index: 3;
+        }
+        .vehicle-photo-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            transition: background 0.2s;
+        }
+        .vehicle-photo-dot.active {
+            background: var(--gold);
         }
         .vehicle-card-body {
             padding: 12px;
@@ -570,13 +647,37 @@ $ultimosClientes = $db->query("
                                     'vendido' => 'Vendido'
                                 ];
                             ?>
+                            <?php
+                                // Collect all photos for this vehicle
+                                $todasFotos = [];
+                                if ($vehiculo['foto']) {
+                                    $todasFotos[] = $vehiculo['foto'];
+                                }
+                                if (isset($fotosPorVehiculo[$vehiculo['id']])) {
+                                    $todasFotos = array_merge($todasFotos, $fotosPorVehiculo[$vehiculo['id']]);
+                                }
+                                $vehiculoGalleryId = 'gallery-' . $vehiculo['id'];
+                            ?>
                             <div class="vehicle-card">
                                 <div class="vehicle-card-status <?php echo $vehiculo['estado']; ?>">
                                     <?php echo $estadoTextos[$vehiculo['estado']] ?? ucfirst(str_replace('_', ' ', $vehiculo['estado'])); ?>
                                 </div>
                                 <div class="vehicle-card-image">
-                                    <?php if ($vehiculo['foto']): ?>
-                                        <img src="../<?php echo escape($vehiculo['foto']); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
+                                    <?php if (!empty($todasFotos)): ?>
+                                        <?php if (count($todasFotos) > 1): ?>
+                                            <button class="vehicle-photo-nav prev" onclick="scrollGallery('<?php echo $vehiculoGalleryId; ?>', -1)">‹</button>
+                                            <button class="vehicle-photo-nav next" onclick="scrollGallery('<?php echo $vehiculoGalleryId; ?>', 1)">›</button>
+                                            <div class="vehicle-photo-dots">
+                                                <?php for ($i = 0; $i < count($todasFotos); $i++): ?>
+                                                    <span class="vehicle-photo-dot <?php echo $i === 0 ? 'active' : ''; ?>" data-index="<?php echo $i; ?>"></span>
+                                                <?php endfor; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="vehicle-photo-gallery" id="<?php echo $vehiculoGalleryId; ?>" data-count="<?php echo count($todasFotos); ?>">
+                                            <?php foreach ($todasFotos as $foto): ?>
+                                                <img src="../<?php echo escape($foto); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
+                                            <?php endforeach; ?>
+                                        </div>
                                     <?php else: ?>
                                         <span class="no-image">🚗</span>
                                     <?php endif; ?>
@@ -611,15 +712,15 @@ $ultimosClientes = $db->query("
                                         </div>
                                     </div>
                                     <?php
-                                    // Investment progress bar
+                                    // Investment progress bar - now using Compra + Prevision de gastos
                                     $capitalInvertidoVeh = $capitalPorVehiculo[$vehiculo['id']] ?? 0;
-                                    $precioCompraVeh = floatval($vehiculo['precio_compra']);
-                                    $porcentajeInvertido = $precioCompraVeh > 0 ? min(100, ($capitalInvertidoVeh / $precioCompraVeh) * 100) : 0;
+                                    $inversionNecesaria = floatval($vehiculo['precio_compra']) + floatval($vehiculo['prevision_gastos'] ?? 0);
+                                    $porcentajeInvertido = $inversionNecesaria > 0 ? min(100, ($capitalInvertidoVeh / $inversionNecesaria) * 100) : 0;
                                     ?>
                                     <div class="vehicle-investment-bar">
                                         <div class="vehicle-investment-label">
                                             <span>Inversión</span>
-                                            <span><?php echo formatMoney($capitalInvertidoVeh); ?> / <?php echo formatMoney($precioCompraVeh); ?></span>
+                                            <span><?php echo formatMoney($capitalInvertidoVeh); ?> / <?php echo formatMoney($inversionNecesaria); ?></span>
                                         </div>
                                         <div class="vehicle-investment-progress">
                                             <div class="vehicle-investment-progress-fill" style="width: <?php echo number_format($porcentajeInvertido, 1); ?>%;"></div>
@@ -696,6 +797,41 @@ $ultimosClientes = $db->query("
     </div>
 
     <script>
+        // Photo gallery navigation
+        function scrollGallery(galleryId, direction) {
+            var gallery = document.getElementById(galleryId);
+            var imageWidth = gallery.offsetWidth;
+            var count = parseInt(gallery.dataset.count);
+            var currentScroll = gallery.scrollLeft;
+            var currentIndex = Math.round(currentScroll / imageWidth);
+            var newIndex = currentIndex + direction;
+
+            if (newIndex < 0) newIndex = count - 1;
+            if (newIndex >= count) newIndex = 0;
+
+            gallery.scrollTo({ left: newIndex * imageWidth, behavior: 'smooth' });
+
+            // Update dots
+            var card = gallery.closest('.vehicle-card');
+            var dots = card.querySelectorAll('.vehicle-photo-dot');
+            dots.forEach(function(dot, i) {
+                dot.classList.toggle('active', i === newIndex);
+            });
+        }
+
+        // Update dots on scroll
+        document.querySelectorAll('.vehicle-photo-gallery').forEach(function(gallery) {
+            gallery.addEventListener('scroll', function() {
+                var imageWidth = gallery.offsetWidth;
+                var currentIndex = Math.round(gallery.scrollLeft / imageWidth);
+                var card = gallery.closest('.vehicle-card');
+                var dots = card.querySelectorAll('.vehicle-photo-dot');
+                dots.forEach(function(dot, i) {
+                    dot.classList.toggle('active', i === currentIndex);
+                });
+            });
+        });
+
         // Gráfico de Rentabilidad Media por Semana
         const ctx = document.getElementById('rentabilidadChart').getContext('2d');
         new Chart(ctx, {

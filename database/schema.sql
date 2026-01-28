@@ -177,9 +177,25 @@ CREATE TABLE IF NOT EXISTS `capital` (
 CREATE TABLE IF NOT EXISTS `conceptos` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `concepto` VARCHAR(50) NOT NULL,
+  `tipologia` ENUM('ingreso', 'gasto', 'gasto_vehiculo') NOT NULL DEFAULT 'gasto' COMMENT 'Tipología del concepto',
   `activo` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_tipologia` (`tipologia`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Tabla: vehiculo_fotos (múltiples fotos por vehículo)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `vehiculo_fotos` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `vehiculo_id` INT UNSIGNED NOT NULL,
+  `foto` VARCHAR(255) NOT NULL,
+  `orden` INT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_vehiculo` (`vehiculo_id`),
+  CONSTRAINT `fk_foto_vehiculo` FOREIGN KEY (`vehiculo_id`) REFERENCES `vehiculos` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -212,17 +228,17 @@ CREATE TABLE IF NOT EXISTS `apuntes` (
 -- --------------------------------------------------------
 -- Datos iniciales de conceptos
 -- --------------------------------------------------------
-INSERT INTO `conceptos` (`concepto`) VALUES
-('Ingreso de capital'),
-('Retirada de capital'),
-('Compra de vehículo'),
-('Venta de vehículo'),
-('Gastos de reparación'),
-('Gastos de ITV'),
-('Gastos de transferencia'),
-('Comisión'),
-('Rentabilidad'),
-('Otros');
+INSERT INTO `conceptos` (`concepto`, `tipologia`) VALUES
+('Ingreso de capital', 'ingreso'),
+('Retirada de capital', 'gasto'),
+('Compra de vehículo', 'gasto_vehiculo'),
+('Venta de vehículo', 'ingreso'),
+('Gastos de reparación', 'gasto_vehiculo'),
+('Gastos de ITV', 'gasto_vehiculo'),
+('Gastos de transferencia', 'gasto_vehiculo'),
+('Comisión', 'gasto'),
+('Rentabilidad', 'ingreso'),
+('Otros', 'gasto');
 
 -- --------------------------------------------------------
 -- Tabla: contactos (formulario de contacto landing)

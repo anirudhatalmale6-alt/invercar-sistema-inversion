@@ -12,6 +12,68 @@ $db = getDB();
 $error = '';
 $exito = '';
 
+// Exportar CSV
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    $filtro = cleanInput($_GET['filtro'] ?? '');
+    $sql = "SELECT * FROM vehiculos";
+    $params = [];
+
+    if ($filtro) {
+        $sql .= " WHERE marca LIKE ? OR modelo LIKE ?";
+        $params = ["%$filtro%", "%$filtro%"];
+    }
+
+    $sql .= " ORDER BY created_at DESC";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $vehiculos = $stmt->fetchAll();
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="vehiculos_' . date('Y-m-d') . '.csv"');
+
+    $output = fopen('php://output', 'w');
+    // BOM for Excel UTF-8
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+    // Header
+    fputcsv($output, ['ID', 'Matrícula', 'Marca', 'Modelo', 'Versión', 'Año', 'Kilómetros', 'Precio Compra', 'Prev. Gastos', 'Gastos Reales', 'Venta Prevista', 'Venta Real', 'Beneficio', 'Estado', 'Fecha Compra', 'Fecha Venta', 'Notas'], ';');
+
+    $estadoTexto = [
+        'en_estudio' => 'En Estudio',
+        'en_preparacion' => 'En Preparación',
+        'en_venta' => 'En Venta',
+        'reservado' => 'Reservado',
+        'vendido' => 'Vendido'
+    ];
+
+    foreach ($vehiculos as $v) {
+        $beneficio = $v['beneficio'] ?? ($v['valor_venta_previsto'] - $v['precio_compra'] - $v['gastos']);
+
+        fputcsv($output, [
+            $v['id'],
+            $v['matricula'] ?? '',
+            $v['marca'],
+            $v['modelo'],
+            $v['version'] ?? '',
+            $v['anio'],
+            $v['kilometros'] ?? '',
+            number_format($v['precio_compra'], 2, ',', ''),
+            number_format($v['prevision_gastos'] ?? 0, 2, ',', ''),
+            number_format($v['gastos'], 2, ',', ''),
+            number_format($v['valor_venta_previsto'], 2, ',', ''),
+            $v['precio_venta_real'] ? number_format($v['precio_venta_real'], 2, ',', '') : '',
+            number_format($beneficio, 2, ',', ''),
+            $estadoTexto[$v['estado']] ?? $v['estado'],
+            $v['fecha_compra'] ? date('d/m/Y', strtotime($v['fecha_compra'])) : '',
+            $v['fecha_venta'] ? date('d/m/Y', strtotime($v['fecha_venta'])) : '',
+            $v['notas'] ?? ''
+        ], ';');
+    }
+
+    fclose($output);
+    exit;
+}
+
 // Procesar acciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrfVerify($_POST['csrf_token'] ?? '')) {
@@ -42,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($marca) || empty($modelo) || $precio_compra <= 0) {
                 $error = 'Marca, modelo y precio de compra son obligatorios.';
             } else {
-                // Procesar imagen si se sube
+                // Procesar imagen principal si se sube
                 $foto = null;
                 if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
                     $allowed = ['image/jpeg', 'image/png', 'image/webp'];
@@ -61,12 +123,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
 
+                // Procesar fotos adicionales
+                $fotosAdicionales = [];
+                if (isset($_FILES['fotos_adicionales']) && is_array($_FILES['fotos_adicionales']['name'])) {
+                    $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+                    $uploadPath = ROOT_PATH . '/assets/uploads/vehiculos/';
+                    if (!is_dir($uploadPath)) {
+                        mkdir($uploadPath, 0755, true);
+                    }
+
+                    foreach ($_FILES['fotos_adicionales']['name'] as $key => $name) {
+                        if ($_FILES['fotos_adicionales']['error'][$key] === UPLOAD_ERR_OK) {
+                            if (in_array($_FILES['fotos_adicionales']['type'][$key], $allowed)) {
+                                $ext = pathinfo($name, PATHINFO_EXTENSION);
+                                $filename = 'vehiculo_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                                if (move_uploaded_file($_FILES['fotos_adicionales']['tmp_name'][$key], $uploadPath . $filename)) {
+                                    $fotosAdicionales[] = 'assets/uploads/vehiculos/' . $filename;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 try {
                     if ($action === 'crear') {
                         $sql = "INSERT INTO vehiculos (matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, estado, fecha_compra, fecha_venta, notas, foto)
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $db->prepare($sql);
                         $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto]);
+                        $vehiculoId = $db->lastInsertId();
+
+                        // Guardar fotos adicionales
+                        if (!empty($fotosAdicionales)) {
+                            $stmtFoto = $db->prepare("INSERT INTO vehiculo_fotos (vehiculo_id, foto, orden) VALUES (?, ?, ?)");
+                            foreach ($fotosAdicionales as $orden => $fotoPath) {
+                                $stmtFoto->execute([$vehiculoId, $fotoPath, $orden]);
+                            }
+                        }
+
                         $exito = 'Vehículo creado correctamente.';
                     } else {
                         // Obtener foto actual si no se sube nueva
@@ -80,6 +174,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $sql = "UPDATE vehiculos SET matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, fecha_compra=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
                         $stmt = $db->prepare($sql);
                         $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto, $id]);
+
+                        // Guardar fotos adicionales
+                        if (!empty($fotosAdicionales)) {
+                            // Obtener el último orden
+                            $maxOrden = $db->prepare("SELECT COALESCE(MAX(orden), -1) + 1 as next_orden FROM vehiculo_fotos WHERE vehiculo_id = ?");
+                            $maxOrden->execute([$id]);
+                            $nextOrden = $maxOrden->fetch()['next_orden'];
+
+                            $stmtFoto = $db->prepare("INSERT INTO vehiculo_fotos (vehiculo_id, foto, orden) VALUES (?, ?, ?)");
+                            foreach ($fotosAdicionales as $i => $fotoPath) {
+                                $stmtFoto->execute([$id, $fotoPath, $nextOrden + $i]);
+                            }
+                        }
+
                         $exito = 'Vehículo actualizado correctamente.';
                     }
                 } catch (Exception $e) {
@@ -94,6 +202,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $exito = 'Vehículo eliminado correctamente.';
             } catch (Exception $e) {
                 $error = 'Error al eliminar el vehículo.';
+            }
+        } elseif ($action === 'eliminar_foto') {
+            $fotoId = intval($_POST['foto_id'] ?? 0);
+            $vehiculoId = intval($_POST['vehiculo_id'] ?? 0);
+            try {
+                $stmt = $db->prepare("DELETE FROM vehiculo_fotos WHERE id = ? AND vehiculo_id = ?");
+                $stmt->execute([$fotoId, $vehiculoId]);
+                $exito = 'Foto eliminada correctamente.';
+            } catch (Exception $e) {
+                $error = 'Error al eliminar la foto.';
             }
         }
     }
@@ -116,10 +234,17 @@ $vehiculos = $stmt->fetchAll();
 
 // Vehículo a editar
 $vehiculoEditar = null;
+$fotosVehiculo = [];
 if (isset($_GET['editar'])) {
     $stmt = $db->prepare("SELECT * FROM vehiculos WHERE id = ?");
     $stmt->execute([intval($_GET['editar'])]);
     $vehiculoEditar = $stmt->fetch();
+
+    if ($vehiculoEditar) {
+        $stmtFotos = $db->prepare("SELECT * FROM vehiculo_fotos WHERE vehiculo_id = ? ORDER BY orden");
+        $stmtFotos->execute([$vehiculoEditar['id']]);
+        $fotosVehiculo = $stmtFotos->fetchAll();
+    }
 }
 
 // Mensajes no leídos
@@ -168,6 +293,14 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         <?php if ($filtro): ?>
                             <a href="vehiculos.php" class="btn btn-outline">Limpiar</a>
                         <?php endif; ?>
+                        <a href="?export=csv<?php echo $filtro ? '&filtro=' . urlencode($filtro) : ''; ?>" class="btn btn-outline" title="Exportar a CSV">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            CSV
+                        </a>
                     </form>
                 </div>
             </div>
@@ -376,10 +509,13 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Foto del vehículo</label>
+                            <label>Foto Principal</label>
                             <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
                             <?php if ($vehiculoEditar && $vehiculoEditar['foto']): ?>
-                                <small style="color: var(--text-muted);">Actual: <?php echo basename($vehiculoEditar['foto']); ?></small>
+                                <div style="margin-top: 5px;">
+                                    <img src="../<?php echo escape($vehiculoEditar['foto']); ?>" style="width: 60px; height: 40px; object-fit: cover; border-radius: 4px;">
+                                    <small style="color: var(--text-muted); margin-left: 5px;">Actual</small>
+                                </div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -396,6 +532,27 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                    value="<?php echo escape($vehiculoEditar['fecha_venta'] ?? ''); ?>">
                         </div>
                     </div>
+
+                    <div class="form-group">
+                        <label>Fotos Adicionales</label>
+                        <input type="file" name="fotos_adicionales[]" accept="image/jpeg,image/png,image/webp" multiple>
+                        <small style="color: var(--text-muted);">Puedes seleccionar varias fotos a la vez</small>
+                    </div>
+
+                    <?php if ($vehiculoEditar && !empty($fotosVehiculo)): ?>
+                    <div class="form-group">
+                        <label>Fotos Actuales</label>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
+                            <?php foreach ($fotosVehiculo as $f): ?>
+                            <div style="position: relative;">
+                                <img src="../<?php echo escape($f['foto']); ?>" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);">
+                                <button type="button" onclick="eliminarFoto(<?php echo $f['id']; ?>, <?php echo $vehiculoEditar['id']; ?>)"
+                                        style="position: absolute; top: -5px; right: -5px; width: 20px; height: 20px; border-radius: 50%; background: var(--danger); color: white; border: none; cursor: pointer; font-size: 12px; line-height: 1;">&times;</button>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
 
                     <div class="form-group">
                         <label>Notas</label>
@@ -417,6 +574,20 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                 window.location.href = 'vehiculos.php';
             }
         });
+
+        // Eliminar foto adicional
+        function eliminarFoto(fotoId, vehiculoId) {
+            if (confirm('¿Eliminar esta foto?')) {
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = '<?php echo csrfField(); ?>' +
+                    '<input type="hidden" name="action" value="eliminar_foto">' +
+                    '<input type="hidden" name="foto_id" value="' + fotoId + '">' +
+                    '<input type="hidden" name="vehiculo_id" value="' + vehiculoId + '">';
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
     </script>
 </body>
 </html>

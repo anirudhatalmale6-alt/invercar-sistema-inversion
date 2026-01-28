@@ -12,6 +12,71 @@ $db = getDB();
 $error = '';
 $exito = '';
 
+// Exportar CSV
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    $filtro = cleanInput($_GET['filtro'] ?? '');
+    $sql = "SELECT c.* FROM clientes c WHERE c.registro_completo = 1";
+    $params = [];
+
+    if ($filtro) {
+        $sql .= " AND (c.nombre LIKE ? OR c.apellidos LIKE ? OR c.email LIKE ? OR c.dni LIKE ?)";
+        $params = ["%$filtro%", "%$filtro%", "%$filtro%", "%$filtro%"];
+    }
+
+    $sql .= " ORDER BY c.created_at DESC";
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $clientes = $stmt->fetchAll();
+
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="clientes_' . date('Y-m-d') . '.csv"');
+
+    $output = fopen('php://output', 'w');
+    // BOM for Excel UTF-8
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+    // Header
+    fputcsv($output, ['ID', 'Nombre', 'Apellidos', 'Email', 'DNI', 'Teléfono', 'Dirección', 'CP', 'Población', 'Provincia', 'País', 'Capital Fija', 'Capital Variable', 'Capital Total', 'Activo', 'Fecha Registro'], ';');
+
+    foreach ($clientes as $c) {
+        // Obtener capital del cliente
+        $stmtCap = $db->prepare("
+            SELECT tipo_inversion, SUM(importe_ingresado) - SUM(importe_retirado) as capital
+            FROM capital WHERE cliente_id = ? AND activo = 1 GROUP BY tipo_inversion
+        ");
+        $stmtCap->execute([$c['id']]);
+        $capData = [];
+        foreach ($stmtCap->fetchAll() as $cap) {
+            $capData[$cap['tipo_inversion']] = $cap['capital'];
+        }
+        $capFija = $capData['fija'] ?? 0;
+        $capVariable = $capData['variable'] ?? 0;
+        $capTotal = $capFija + $capVariable;
+
+        fputcsv($output, [
+            $c['id'],
+            $c['nombre'],
+            $c['apellidos'],
+            $c['email'],
+            $c['dni'],
+            $c['telefono'],
+            $c['direccion'],
+            $c['codigo_postal'],
+            $c['poblacion'],
+            $c['provincia'],
+            $c['pais'],
+            number_format($capFija, 2, ',', ''),
+            number_format($capVariable, 2, ',', ''),
+            number_format($capTotal, 2, ',', ''),
+            $c['activo'] ? 'Sí' : 'No',
+            date('d/m/Y', strtotime($c['created_at']))
+        ], ';');
+    }
+
+    fclose($output);
+    exit;
+}
+
 // Procesar acciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrfVerify($_POST['csrf_token'] ?? '')) {
@@ -342,6 +407,14 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                             <?php if ($filtro): ?>
                                 <a href="clientes.php" class="btn btn-outline">Limpiar</a>
                             <?php endif; ?>
+                            <a href="?export=csv<?php echo $filtro ? '&filtro=' . urlencode($filtro) : ''; ?>" class="btn btn-outline" title="Exportar a CSV">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                CSV
+                            </a>
                         </form>
                     </div>
                 </div>

@@ -40,14 +40,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'crear_concepto') {
             $concepto = cleanInput($_POST['concepto'] ?? '');
+            $tipologia = cleanInput($_POST['tipologia'] ?? 'gasto');
             if (empty($concepto)) {
                 $error = 'El concepto no puede estar vacío.';
             } elseif (strlen($concepto) > 50) {
                 $error = 'El concepto no puede superar 50 caracteres.';
+            } elseif (!in_array($tipologia, ['ingreso', 'gasto', 'gasto_vehiculo'])) {
+                $error = 'Tipología no válida.';
             } else {
                 try {
-                    $stmt = $db->prepare("INSERT INTO conceptos (concepto) VALUES (?)");
-                    $stmt->execute([$concepto]);
+                    $stmt = $db->prepare("INSERT INTO conceptos (concepto, tipologia) VALUES (?, ?)");
+                    $stmt->execute([$concepto, $tipologia]);
                     $exito = 'Concepto creado correctamente.';
                 } catch (Exception $e) {
                     $error = 'Error al crear el concepto.';
@@ -56,9 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'editar_concepto') {
             $id = intval($_POST['id'] ?? 0);
             $concepto = cleanInput($_POST['concepto'] ?? '');
-            if ($id > 0 && !empty($concepto) && strlen($concepto) <= 50) {
-                $stmt = $db->prepare("UPDATE conceptos SET concepto = ? WHERE id = ?");
-                $stmt->execute([$concepto, $id]);
+            $tipologia = cleanInput($_POST['tipologia'] ?? 'gasto');
+            if ($id > 0 && !empty($concepto) && strlen($concepto) <= 50 && in_array($tipologia, ['ingreso', 'gasto', 'gasto_vehiculo'])) {
+                $stmt = $db->prepare("UPDATE conceptos SET concepto = ?, tipologia = ? WHERE id = ?");
+                $stmt->execute([$concepto, $tipologia, $id]);
                 $exito = 'Concepto actualizado.';
             }
         } elseif ($action === 'eliminar_concepto') {
@@ -198,10 +202,15 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                     <p style="color: var(--text-muted); margin-bottom: 15px;">Los conceptos se utilizan para clasificar los apuntes contables.</p>
 
                     <!-- Añadir nuevo concepto -->
-                    <form method="POST" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <form method="POST" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
                         <?php echo csrfField(); ?>
                         <input type="hidden" name="action" value="crear_concepto">
-                        <input type="text" name="concepto" placeholder="Nuevo concepto (máx. 50 caracteres)" maxlength="50" style="flex: 1;">
+                        <input type="text" name="concepto" placeholder="Nuevo concepto (máx. 50 caracteres)" maxlength="50" style="flex: 1; min-width: 200px;">
+                        <select name="tipologia" style="width: 150px;">
+                            <option value="ingreso">Ingreso</option>
+                            <option value="gasto" selected>Gasto</option>
+                            <option value="gasto_vehiculo">Gasto Vehículo</option>
+                        </select>
                         <button type="submit" class="btn btn-primary">Añadir</button>
                     </form>
 
@@ -215,22 +224,44 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                     <tr>
                                         <th>ID</th>
                                         <th>Concepto</th>
+                                        <th>Tipología</th>
                                         <th>Estado</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($conceptos as $c): ?>
+                                    <?php
+                                    $tipologiaBadge = [
+                                        'ingreso' => 'badge-success',
+                                        'gasto' => 'badge-danger',
+                                        'gasto_vehiculo' => 'badge-warning'
+                                    ];
+                                    $tipologiaTexto = [
+                                        'ingreso' => 'Ingreso',
+                                        'gasto' => 'Gasto',
+                                        'gasto_vehiculo' => 'Gasto Vehículo'
+                                    ];
+                                    foreach ($conceptos as $c): ?>
                                     <tr>
                                         <td><?php echo $c['id']; ?></td>
                                         <td>
-                                            <form method="POST" style="display: flex; gap: 5px;">
+                                            <form method="POST" style="display: flex; gap: 5px; flex-wrap: wrap;">
                                                 <?php echo csrfField(); ?>
                                                 <input type="hidden" name="action" value="editar_concepto">
                                                 <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
-                                                <input type="text" name="concepto" value="<?php echo escape($c['concepto']); ?>" maxlength="50" style="width: 200px;">
+                                                <input type="text" name="concepto" value="<?php echo escape($c['concepto']); ?>" maxlength="50" style="width: 180px;">
+                                                <select name="tipologia" style="width: 130px;">
+                                                    <option value="ingreso" <?php echo ($c['tipologia'] ?? 'gasto') === 'ingreso' ? 'selected' : ''; ?>>Ingreso</option>
+                                                    <option value="gasto" <?php echo ($c['tipologia'] ?? 'gasto') === 'gasto' ? 'selected' : ''; ?>>Gasto</option>
+                                                    <option value="gasto_vehiculo" <?php echo ($c['tipologia'] ?? 'gasto') === 'gasto_vehiculo' ? 'selected' : ''; ?>>Gasto Vehículo</option>
+                                                </select>
                                                 <button type="submit" class="btn btn-sm btn-outline">Guardar</button>
                                             </form>
+                                        </td>
+                                        <td>
+                                            <span class="badge <?php echo $tipologiaBadge[$c['tipologia'] ?? 'gasto'] ?? 'badge-info'; ?>">
+                                                <?php echo $tipologiaTexto[$c['tipologia'] ?? 'gasto'] ?? ucfirst($c['tipologia'] ?? 'gasto'); ?>
+                                            </span>
                                         </td>
                                         <td>
                                             <form method="POST" style="display: inline;">
