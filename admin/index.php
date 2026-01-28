@@ -61,6 +61,18 @@ $vehiculosActivos = $db->query("
     ORDER BY created_at DESC
 ")->fetchAll();
 
+// Obtener capital invertido por vehículo (desde tabla capital)
+$capitalPorVehiculo = [];
+$stmtCapVeh = $db->query("
+    SELECT vehiculo_id, COALESCE(SUM(importe_ingresado) - SUM(importe_retirado), 0) as capital_invertido
+    FROM capital
+    WHERE vehiculo_id IS NOT NULL AND activo = 1
+    GROUP BY vehiculo_id
+");
+foreach ($stmtCapVeh->fetchAll() as $cv) {
+    $capitalPorVehiculo[$cv['vehiculo_id']] = floatval($cv['capital_invertido']);
+}
+
 // Configuración
 $rentabilidadFija = floatval(getConfig('rentabilidad_fija', 5));
 $rentabilidadVariableActual = floatval(getConfig('rentabilidad_variable_actual', 14.8));
@@ -126,8 +138,13 @@ for ($i = 8; $i >= 0; $i--) {
 }
 
 // Calcular capital y rentabilidad
-// El capital invertido real es el que está en vehículos activos
-$capitalInvertidoVehiculos = floatval($statsVehiculos['capital_invertido_vehiculos'] ?? 0);
+// El capital invertido real es el capital vinculado a vehículos en la tabla capital
+$capitalConVehiculo = $db->query("
+    SELECT COALESCE(SUM(importe_ingresado) - SUM(importe_retirado), 0) as capital
+    FROM capital
+    WHERE vehiculo_id IS NOT NULL AND activo = 1
+")->fetch();
+$capitalInvertidoVehiculos = floatval($capitalConVehiculo['capital'] ?? 0);
 $capitalReserva = max(0, $capitalTotalClientes - $capitalInvertidoVehiculos);
 
 // Calcular rentabilidad generada basada en capital invertido real (proporcional)
@@ -226,18 +243,42 @@ $ultimosClientes = $db->query("
         .vehicle-card-status.reservado { background: var(--blue-accent); color: #fff; }
         .vehicle-card-image {
             width: 100%;
-            height: 140px;
+            height: 100px;
             background: rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            padding: 10px;
         }
         .vehicle-card-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
             object-position: center;
+        }
+        /* Investment progress bar */
+        .vehicle-investment-bar {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+        .vehicle-investment-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .vehicle-investment-progress {
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            overflow: hidden;
+        }
+        .vehicle-investment-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--gold), #c9a227);
+            transition: width 0.3s ease;
         }
         .vehicle-card-image .no-image {
             color: var(--text-muted);
@@ -568,6 +609,21 @@ $ultimosClientes = $db->query("
                                             <span style="font-weight: 600; color: <?php echo $rentabilidadPorcentaje >= 0 ? 'var(--green-accent)' : 'var(--danger)'; ?>;">
                                                 (<?php echo $rentabilidadPorcentaje >= 0 ? '+' : ''; ?><?php echo number_format($rentabilidadPorcentaje, 1, ',', '.'); ?>%)
                                             </span>
+                                        </div>
+                                    </div>
+                                    <?php
+                                    // Investment progress bar
+                                    $capitalInvertidoVeh = $capitalPorVehiculo[$vehiculo['id']] ?? 0;
+                                    $precioCompraVeh = floatval($vehiculo['precio_compra']);
+                                    $porcentajeInvertido = $precioCompraVeh > 0 ? min(100, ($capitalInvertidoVeh / $precioCompraVeh) * 100) : 0;
+                                    ?>
+                                    <div class="vehicle-investment-bar">
+                                        <div class="vehicle-investment-label">
+                                            <span>Inversión</span>
+                                            <span><?php echo formatMoney($capitalInvertidoVeh); ?> / <?php echo formatMoney($precioCompraVeh); ?></span>
+                                        </div>
+                                        <div class="vehicle-investment-progress">
+                                            <div class="vehicle-investment-progress-fill" style="width: <?php echo number_format($porcentajeInvertido, 1); ?>%;"></div>
                                         </div>
                                     </div>
                                 </div>

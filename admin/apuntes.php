@@ -15,6 +15,15 @@ $exito = '';
 // Obtener conceptos para el dropdown
 $conceptos = $db->query("SELECT id, concepto FROM conceptos WHERE activo = 1 ORDER BY concepto")->fetchAll();
 
+// Identificar IDs de conceptos de capital para validación
+$conceptosCapital = [];
+foreach ($conceptos as $c) {
+    $conceptoLower = strtolower($c['concepto']);
+    if (strpos($conceptoLower, 'ingreso de capital') !== false || strpos($conceptoLower, 'retirada de capital') !== false) {
+        $conceptosCapital[$c['id']] = $c['concepto'];
+    }
+}
+
 // Obtener clientes para el dropdown
 $clientes = $db->query("SELECT id, nombre, apellidos FROM clientes WHERE activo = 1 ORDER BY nombre, apellidos")->fetchAll();
 
@@ -41,12 +50,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $activo = intval($_POST['activo'] ?? 1);
 
             // Validaciones
+            $esConceptoCapital = isset($conceptosCapital[$concepto_id]);
+
             if (empty($fecha)) {
                 $error = 'La fecha es obligatoria.';
             } elseif ($concepto_id <= 0) {
                 $error = 'Debe seleccionar un concepto.';
             } elseif (!in_array($tipo_apunte, ['D', 'H'])) {
                 $error = 'Tipo de apunte no válido.';
+            } elseif ($esConceptoCapital && empty($cliente_id)) {
+                $error = 'Para Ingreso/Retirada de capital debe seleccionar un cliente.';
             } else {
                 try {
                     if ($action === 'crear') {
@@ -54,7 +67,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $db->prepare($sql);
                         $stmt->execute([$fecha, $concepto_id, $descripcion, $cliente_id, $vehiculo_id, $importe, $tipo_apunte, $realizado, $activo]);
-                        $exito = 'Apunte creado correctamente.';
+
+                        // Si es concepto de capital, crear registro automático en tabla capital
+                        if ($esConceptoCapital && $cliente_id) {
+                            $conceptoTexto = strtolower($conceptosCapital[$concepto_id]);
+                            $esIngreso = strpos($conceptoTexto, 'ingreso') !== false;
+
+                            $sqlCap = "INSERT INTO capital (fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
+                                       VALUES (?, ?, ?, ?, 'variable', ?, 1, ?)";
+                            $stmtCap = $db->prepare($sqlCap);
+                            if ($esIngreso) {
+                                $stmtCap->execute([$fecha, $cliente_id, $importe, 0, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                            } else {
+                                $stmtCap->execute([$fecha, $cliente_id, 0, $importe, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                            }
+                        }
+
+                        $exito = 'Apunte creado correctamente.' . ($esConceptoCapital ? ' Se ha creado también el registro de capital.' : '');
                     } else {
                         $sql = "UPDATE apuntes SET fecha=?, concepto_id=?, descripcion=?, cliente_id=?, vehiculo_id=?, importe=?, tipo_apunte=?, realizado=?, activo=? WHERE id=?";
                         $stmt = $db->prepare($sql);
@@ -144,6 +173,46 @@ if (isset($_GET['editar'])) {
 }
 
 $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE leido = 0")->fetch()['total'];
+
+// CSV Export
+if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="apuntes_' . date('Y-m-d') . '.csv"');
+
+    $output = fopen('php://output', 'w');
+    // BOM for Excel UTF-8
+    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+
+    // Header
+    fputcsv($output, ['Fecha', 'Concepto', 'Descripcion', 'Cliente', 'Vehiculo', 'Debe', 'Haber', 'Estado'], ';');
+
+    // Data
+    foreach ($apuntes as $a) {
+        $cliente = $a['cliente_id'] ? ($a['cliente_nombre'] . ' ' . $a['cliente_apellidos']) : '';
+        $vehiculo = $a['vehiculo_id'] ? ($a['marca'] . ' ' . $a['modelo']) : '';
+        $debe = $a['tipo_apunte'] === 'D' ? number_format($a['importe'], 2, ',', '') : '';
+        $haber = $a['tipo_apunte'] === 'H' ? number_format($a['importe'], 2, ',', '') : '';
+        $estado = $a['realizado'] ? 'Realizado' : 'Pendiente';
+
+        fputcsv($output, [
+            date('d/m/Y', strtotime($a['fecha'])),
+            $a['concepto'],
+            $a['descripcion'],
+            $cliente,
+            $vehiculo,
+            $debe,
+            $haber,
+            $estado
+        ], ';');
+    }
+
+    // Totals
+    fputcsv($output, ['', '', '', '', 'TOTAL', number_format($totalDebe, 2, ',', ''), number_format($totalHaber, 2, ',', ''), ''], ';');
+    fputcsv($output, ['', '', '', '', 'SALDO', '', number_format($saldo, 2, ',', ''), ''], ';');
+
+    fclose($output);
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -166,9 +235,14 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                     <h1>Apuntes Contables</h1>
                     <p>Registro de movimientos y operaciones</p>
                 </div>
-                <button class="btn btn-primary" onclick="document.getElementById('modalApunte').classList.add('active')">
-                    + Añadir Apunte
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <a href="?export=csv<?php echo $filtroCliente ? '&cliente='.$filtroCliente : ''; ?><?php echo $filtroVehiculo ? '&vehiculo='.$filtroVehiculo : ''; ?><?php echo $filtroTipo ? '&tipo='.$filtroTipo : ''; ?><?php echo $filtroRealizado >= 0 ? '&realizado='.$filtroRealizado : ''; ?>" class="btn btn-outline">
+                        Exportar CSV
+                    </a>
+                    <button class="btn btn-primary" onclick="document.getElementById('modalApunte').classList.add('active')">
+                        + Añadir Apunte
+                    </button>
+                </div>
             </div>
 
             <?php if ($error): ?>
@@ -452,6 +526,27 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                 window.location.href = 'apuntes.php';
             }
         });
+
+        // IDs de conceptos de capital (requieren cliente)
+        var conceptosCapitalIds = <?php echo json_encode(array_keys($conceptosCapital)); ?>;
+
+        // Validar cliente cuando se selecciona concepto de capital
+        document.querySelector('select[name="concepto_id"]').addEventListener('change', function() {
+            var conceptoId = parseInt(this.value);
+            var clienteSelect = document.querySelector('select[name="cliente_id"]');
+            var clienteLabel = clienteSelect.previousElementSibling;
+
+            if (conceptosCapitalIds.includes(conceptoId)) {
+                clienteSelect.required = true;
+                clienteLabel.innerHTML = 'Cliente <span style="color: var(--danger);">* (obligatorio para capital)</span>';
+            } else {
+                clienteSelect.required = false;
+                clienteLabel.innerHTML = 'Cliente';
+            }
+        });
+
+        // Trigger on load if editing
+        document.querySelector('select[name="concepto_id"]').dispatchEvent(new Event('change'));
     </script>
 </body>
 </html>
