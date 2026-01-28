@@ -243,18 +243,17 @@ $ultimosClientes = $db->query("
         .vehicle-card-status.reservado { background: var(--blue-accent); color: #fff; }
         .vehicle-card-image {
             width: 100%;
-            height: 100px;
+            height: 140px;
             background: rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            padding: 10px;
         }
         .vehicle-card-image img {
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             object-position: center;
         }
         /* Investment progress bar */
