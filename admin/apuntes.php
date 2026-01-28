@@ -12,8 +12,8 @@ $db = getDB();
 $error = '';
 $exito = '';
 
-// Obtener conceptos para el dropdown
-$conceptos = $db->query("SELECT id, concepto, tipologia FROM conceptos WHERE activo = 1 ORDER BY concepto")->fetchAll();
+// Obtener conceptos para el dropdown (ordenados por el orden definido por el usuario)
+$conceptos = $db->query("SELECT id, concepto, tipologia FROM conceptos WHERE activo = 1 ORDER BY orden ASC, id ASC")->fetchAll();
 
 // Identificar IDs de conceptos por tipología para validación
 $conceptosCapital = [];
@@ -77,7 +77,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $stmt = $db->prepare($sql);
                         $stmt->execute([$fecha, $concepto_id, $descripcion, $cliente_id, $vehiculo_id, $importe, $tipo_apunte, $realizado, $activo]);
 
-                        // Si es concepto de capital, crear registro automático en tabla capital
+                        // Obtener tipología del concepto
+                        $stmtTip = $db->prepare("SELECT tipologia FROM conceptos WHERE id = ?");
+                        $stmtTip->execute([$concepto_id]);
+                        $tipologia = $stmtTip->fetchColumn() ?: 'gasto';
+
+                        $mensajeExtra = '';
+
+                        // Si el apunte tiene cliente, crear registro de capital
+                        // Para conceptos de capital específicos (ingreso/retirada)
                         if ($esConceptoCapital && $cliente_id) {
                             $conceptoTexto = strtolower($conceptosCapital[$concepto_id]);
                             $esIngreso = strpos($conceptoTexto, 'ingreso') !== false;
@@ -90,16 +98,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             } else {
                                 $stmtCap->execute([$fecha, $cliente_id, 0, $importe, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
                             }
+                            $mensajeExtra .= ' Se ha creado registro de capital.';
+                        }
+                        // Para otros apuntes con cliente y tipología ingreso, sumar al capital del cliente
+                        elseif ($cliente_id && $tipologia === 'ingreso' && !$esConceptoCapital) {
+                            $sqlCap = "INSERT INTO capital (fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
+                                       VALUES (?, ?, ?, 0, 'variable', ?, 1, ?)";
+                            $stmtCap = $db->prepare($sqlCap);
+                            $stmtCap->execute([$fecha, $cliente_id, $importe, $vehiculo_id, 'Ingreso desde Apunte: ' . $descripcion]);
+                            $mensajeExtra .= ' Se ha sumado al capital del cliente.';
                         }
 
                         // Si es gasto de vehículo, sumar a los gastos reales del vehículo
                         if ($esGastoVehiculo && $vehiculo_id) {
                             $db->prepare("UPDATE vehiculos SET gastos = gastos + ? WHERE id = ?")->execute([$importe, $vehiculo_id]);
+                            $mensajeExtra .= ' Se ha actualizado el gasto del vehículo.';
                         }
-
-                        $mensajeExtra = '';
-                        if ($esConceptoCapital) $mensajeExtra .= ' Se ha creado también el registro de capital.';
-                        if ($esGastoVehiculo) $mensajeExtra .= ' Se ha actualizado el gasto del vehículo.';
                         $exito = 'Apunte creado correctamente.' . $mensajeExtra;
                     } else {
                         $sql = "UPDATE apuntes SET fecha=?, concepto_id=?, descripcion=?, cliente_id=?, vehiculo_id=?, importe=?, tipo_apunte=?, realizado=?, activo=? WHERE id=?";

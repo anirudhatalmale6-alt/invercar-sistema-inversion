@@ -55,7 +55,7 @@ $statsVehiculos = $db->query("
 
 // Vehículos activos para las fichas
 $vehiculosActivos = $db->query("
-    SELECT id, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado
+    SELECT id, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado, notas
     FROM vehiculos
     WHERE estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado')
     ORDER BY created_at DESC
@@ -255,18 +255,59 @@ $ultimosClientes = $db->query("
         .vehicle-card-status.reservado { background: var(--blue-accent); color: #fff; }
         .vehicle-card-image {
             width: 100%;
-            height: 140px;
+            height: 180px;
             background: rgba(0,0,0,0.3);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            position: relative;
         }
         .vehicle-card-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             object-position: center;
+        }
+        /* Single image fix */
+        .vehicle-card-image > img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+        /* Tooltip for vehicle notes */
+        .vehicle-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.9);
+            color: #fff;
+            padding: 10px 12px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            max-width: 250px;
+            z-index: 10;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s, visibility 0.2s;
+            pointer-events: none;
+            white-space: pre-wrap;
+            border: 1px solid var(--gold);
+        }
+        .vehicle-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: rgba(0,0,0,0.9);
+        }
+        .vehicle-card-image:hover .vehicle-tooltip {
+            opacity: 1;
+            visibility: visible;
         }
         /* Investment progress bar */
         .vehicle-investment-bar {
@@ -314,9 +355,6 @@ $ultimosClientes = $db->query("
             height: 100%;
             object-fit: cover;
             object-position: center;
-        }
-        .vehicle-card-image {
-            position: relative;
         }
         .vehicle-photo-nav {
             position: absolute;
@@ -663,6 +701,9 @@ $ultimosClientes = $db->query("
                                     <?php echo $estadoTextos[$vehiculo['estado']] ?? ucfirst(str_replace('_', ' ', $vehiculo['estado'])); ?>
                                 </div>
                                 <div class="vehicle-card-image">
+                                    <?php if (!empty($vehiculo['notas'])): ?>
+                                        <div class="vehicle-tooltip"><?php echo escape($vehiculo['notas']); ?></div>
+                                    <?php endif; ?>
                                     <?php if (!empty($todasFotos)): ?>
                                         <?php if (count($todasFotos) > 1): ?>
                                             <button class="vehicle-photo-nav prev" onclick="scrollGallery('<?php echo $vehiculoGalleryId; ?>', -1)">‹</button>
@@ -672,12 +713,14 @@ $ultimosClientes = $db->query("
                                                     <span class="vehicle-photo-dot <?php echo $i === 0 ? 'active' : ''; ?>" data-index="<?php echo $i; ?>"></span>
                                                 <?php endfor; ?>
                                             </div>
+                                            <div class="vehicle-photo-gallery" id="<?php echo $vehiculoGalleryId; ?>" data-count="<?php echo count($todasFotos); ?>">
+                                                <?php foreach ($todasFotos as $foto): ?>
+                                                    <img src="../<?php echo escape($foto); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php else: ?>
+                                            <img src="../<?php echo escape($todasFotos[0]); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
                                         <?php endif; ?>
-                                        <div class="vehicle-photo-gallery" id="<?php echo $vehiculoGalleryId; ?>" data-count="<?php echo count($todasFotos); ?>">
-                                            <?php foreach ($todasFotos as $foto): ?>
-                                                <img src="../<?php echo escape($foto); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
-                                            <?php endforeach; ?>
-                                        </div>
                                     <?php else: ?>
                                         <span class="no-image">🚗</span>
                                     <?php endif; ?>
@@ -692,8 +735,8 @@ $ultimosClientes = $db->query("
                                     </div>
                                     <div class="vehicle-card-prices">
                                         <div class="vehicle-price-item">
-                                            <div class="vehicle-price-label">Compra + Gastos</div>
-                                            <div class="vehicle-price-value compra"><?php echo formatMoney($costeTotal); ?></div>
+                                            <div class="vehicle-price-label">Compra</div>
+                                            <div class="vehicle-price-value compra"><?php echo formatMoney($vehiculo['precio_compra']); ?></div>
                                         </div>
                                         <div class="vehicle-price-item">
                                             <div class="vehicle-price-label">Venta Prevista</div>

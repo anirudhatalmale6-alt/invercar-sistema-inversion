@@ -178,10 +178,12 @@ CREATE TABLE IF NOT EXISTS `conceptos` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `concepto` VARCHAR(50) NOT NULL,
   `tipologia` ENUM('ingreso', 'gasto', 'gasto_vehiculo') NOT NULL DEFAULT 'gasto' COMMENT 'Tipología del concepto',
+  `orden` INT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Orden de visualización',
   `activo` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_tipologia` (`tipologia`)
+  KEY `idx_tipologia` (`tipologia`),
+  KEY `idx_orden` (`orden`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

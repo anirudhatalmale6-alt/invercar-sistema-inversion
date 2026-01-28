@@ -49,8 +49,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Tipología no válida.';
             } else {
                 try {
-                    $stmt = $db->prepare("INSERT INTO conceptos (concepto, tipologia) VALUES (?, ?)");
-                    $stmt->execute([$concepto, $tipologia]);
+                    // Obtener el máximo orden actual
+                    $maxOrden = $db->query("SELECT COALESCE(MAX(orden), 0) + 1 as next_orden FROM conceptos")->fetch()['next_orden'];
+                    $stmt = $db->prepare("INSERT INTO conceptos (concepto, tipologia, orden) VALUES (?, ?, ?)");
+                    $stmt->execute([$concepto, $tipologia, $maxOrden]);
                     $exito = 'Concepto creado correctamente.';
                 } catch (Exception $e) {
                     $error = 'Error al crear el concepto.';
@@ -79,6 +81,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $activo = intval($_POST['activo'] ?? 0);
             $db->prepare("UPDATE conceptos SET activo = ? WHERE id = ?")->execute([$activo, $id]);
             $exito = $activo ? 'Concepto activado.' : 'Concepto desactivado.';
+        } elseif ($action === 'mover_concepto') {
+            $id = intval($_POST['id'] ?? 0);
+            $direccion = cleanInput($_POST['direccion'] ?? '');
+
+            if ($id > 0 && in_array($direccion, ['up', 'down'])) {
+                // Obtener el orden actual del concepto
+                $stmt = $db->prepare("SELECT id, orden FROM conceptos WHERE id = ?");
+                $stmt->execute([$id]);
+                $actual = $stmt->fetch();
+
+                if ($actual) {
+                    $ordenActual = intval($actual['orden']);
+
+                    if ($direccion === 'up') {
+                        // Buscar el concepto anterior (con orden menor más cercano)
+                        $stmt = $db->prepare("SELECT id, orden FROM conceptos WHERE orden < ? ORDER BY orden DESC LIMIT 1");
+                        $stmt->execute([$ordenActual]);
+                        $otro = $stmt->fetch();
+
+                        if ($otro) {
+                            // Intercambiar órdenes
+                            $db->prepare("UPDATE conceptos SET orden = ? WHERE id = ?")->execute([$otro['orden'], $id]);
+                            $db->prepare("UPDATE conceptos SET orden = ? WHERE id = ?")->execute([$ordenActual, $otro['id']]);
+                        }
+                    } else {
+                        // Buscar el concepto siguiente (con orden mayor más cercano)
+                        $stmt = $db->prepare("SELECT id, orden FROM conceptos WHERE orden > ? ORDER BY orden ASC LIMIT 1");
+                        $stmt->execute([$ordenActual]);
+                        $otro = $stmt->fetch();
+
+                        if ($otro) {
+                            // Intercambiar órdenes
+                            $db->prepare("UPDATE conceptos SET orden = ? WHERE id = ?")->execute([$otro['orden'], $id]);
+                            $db->prepare("UPDATE conceptos SET orden = ? WHERE id = ?")->execute([$ordenActual, $otro['id']]);
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -90,8 +130,8 @@ foreach ($stmt->fetchAll() as $row) {
     $config[$row['clave']] = $row['valor'];
 }
 
-// Obtener conceptos
-$conceptos = $db->query("SELECT * FROM conceptos ORDER BY concepto")->fetchAll();
+// Obtener conceptos ordenados
+$conceptos = $db->query("SELECT * FROM conceptos ORDER BY orden ASC, id ASC")->fetchAll();
 
 $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE leido = 0")->fetch()['total'];
 ?>
@@ -222,7 +262,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
+                                        <th style="width: 80px;">Orden</th>
                                         <th>Concepto</th>
                                         <th>Tipología</th>
                                         <th>Estado</th>
@@ -241,9 +281,31 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                         'gasto' => 'Gasto',
                                         'gasto_vehiculo' => 'Gasto Vehículo'
                                     ];
-                                    foreach ($conceptos as $c): ?>
+                                    $totalConceptos = count($conceptos);
+                                    foreach ($conceptos as $idx => $c): ?>
                                     <tr>
-                                        <td><?php echo $c['id']; ?></td>
+                                        <td>
+                                            <div style="display: flex; gap: 3px;">
+                                                <?php if ($idx > 0): ?>
+                                                <form method="POST" style="display: inline;">
+                                                    <?php echo csrfField(); ?>
+                                                    <input type="hidden" name="action" value="mover_concepto">
+                                                    <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
+                                                    <input type="hidden" name="direccion" value="up">
+                                                    <button type="submit" class="btn btn-sm btn-outline" title="Subir">▲</button>
+                                                </form>
+                                                <?php endif; ?>
+                                                <?php if ($idx < $totalConceptos - 1): ?>
+                                                <form method="POST" style="display: inline;">
+                                                    <?php echo csrfField(); ?>
+                                                    <input type="hidden" name="action" value="mover_concepto">
+                                                    <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
+                                                    <input type="hidden" name="direccion" value="down">
+                                                    <button type="submit" class="btn btn-sm btn-outline" title="Bajar">▼</button>
+                                                </form>
+                                                <?php endif; ?>
+                                            </div>
+                                        </td>
                                         <td>
                                             <form method="POST" style="display: flex; gap: 5px; flex-wrap: wrap;">
                                                 <?php echo csrfField(); ?>
