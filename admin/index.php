@@ -10,17 +10,38 @@ if (!isAdminLogueado()) {
 
 $db = getDB();
 
-// Estadísticas generales de clientes
+// Estadísticas generales de clientes (usando tabla capital)
 $statsClientes = $db->query("
-    SELECT
-        COUNT(*) as total,
-        COALESCE(SUM(capital_invertido), 0) as capital_total,
-        COALESCE(SUM(CASE WHEN tipo_inversion = 'fija' THEN capital_invertido ELSE 0 END), 0) as capital_fija,
-        COALESCE(SUM(CASE WHEN tipo_inversion = 'variable' THEN capital_invertido ELSE 0 END), 0) as capital_variable,
-        SUM(CASE WHEN tipo_inversion = 'fija' THEN 1 ELSE 0 END) as clientes_fija,
-        SUM(CASE WHEN tipo_inversion = 'variable' THEN 1 ELSE 0 END) as clientes_variable
-    FROM clientes WHERE activo = 1 AND registro_completo = 1
+    SELECT COUNT(DISTINCT c.id) as total
+    FROM clientes c
+    WHERE c.activo = 1 AND c.registro_completo = 1
 ")->fetch();
+
+// Capital por tipo de inversión (desde tabla capital)
+$capitalStats = $db->query("
+    SELECT
+        tipo_inversion,
+        COALESCE(SUM(importe_ingresado) - SUM(importe_retirado), 0) as capital_neto,
+        COALESCE(SUM(rentabilidad), 0) as rentabilidad_total
+    FROM capital
+    WHERE activo = 1
+    GROUP BY tipo_inversion
+")->fetchAll();
+
+$capitalFija = 0;
+$capitalVariable = 0;
+$rentabilidadAcumuladaFija = 0;
+$rentabilidadAcumuladaVariable = 0;
+foreach ($capitalStats as $cap) {
+    if ($cap['tipo_inversion'] === 'fija') {
+        $capitalFija = floatval($cap['capital_neto']);
+        $rentabilidadAcumuladaFija = floatval($cap['rentabilidad_total']);
+    } else {
+        $capitalVariable = floatval($cap['capital_neto']);
+        $rentabilidadAcumuladaVariable = floatval($cap['rentabilidad_total']);
+    }
+}
+$capitalTotalClientes = $capitalFija + $capitalVariable;
 
 $statsVehiculos = $db->query("
     SELECT
@@ -107,12 +128,7 @@ for ($i = 8; $i >= 0; $i--) {
 // Calcular capital y rentabilidad
 // El capital invertido real es el que está en vehículos activos
 $capitalInvertidoVehiculos = floatval($statsVehiculos['capital_invertido_vehiculos'] ?? 0);
-$capitalTotalClientes = floatval($statsClientes['capital_total'] ?? 0);
 $capitalReserva = max(0, $capitalTotalClientes - $capitalInvertidoVehiculos);
-
-// Capital por tipo de inversión (de clientes)
-$capitalFija = floatval($statsClientes['capital_fija'] ?? 0);
-$capitalVariable = floatval($statsClientes['capital_variable'] ?? 0);
 
 // Calcular rentabilidad generada basada en capital invertido real (proporcional)
 $proporcionFija = $capitalTotalClientes > 0 ? $capitalFija / $capitalTotalClientes : 0;
@@ -121,20 +137,25 @@ $proporcionVariable = $capitalTotalClientes > 0 ? $capitalVariable / $capitalTot
 $capitalInvertidoFija = $capitalInvertidoVehiculos * $proporcionFija;
 $capitalInvertidoVariable = $capitalInvertidoVehiculos * $proporcionVariable;
 
-$rentabilidadGeneradaFija = $capitalInvertidoFija * ($rentabilidadFija / 100);
-$rentabilidadGeneradaVariable = $capitalInvertidoVariable * ($rentabilidadVariableActual / 100);
+// Usar rentabilidad acumulada de la tabla capital si existe, sino calcular
+$rentabilidadGeneradaFija = $rentabilidadAcumuladaFija > 0 ? $rentabilidadAcumuladaFija : $capitalInvertidoFija * ($rentabilidadFija / 100);
+$rentabilidadGeneradaVariable = $rentabilidadAcumuladaVariable > 0 ? $rentabilidadAcumuladaVariable : $capitalInvertidoVariable * ($rentabilidadVariableActual / 100);
 $rentabilidadTotalGenerada = $rentabilidadGeneradaFija + $rentabilidadGeneradaVariable;
 $rentabilidadMediaPorcentaje = $capitalInvertidoVehiculos > 0 ? ($rentabilidadTotalGenerada / $capitalInvertidoVehiculos) * 100 : 0;
 
-// Últimos clientes registrados
+// Últimos clientes registrados (con capital desde tabla capital)
 $ultimosClientes = $db->query("
-    SELECT id, nombre, apellidos, capital_invertido, tipo_inversion,
-           CASE WHEN tipo_inversion = 'fija' THEN capital_invertido ELSE 0 END as capital_fijo,
-           CASE WHEN tipo_inversion = 'variable' THEN capital_invertido ELSE 0 END as capital_variable,
-           created_at
-    FROM clientes
-    WHERE activo = 1 AND registro_completo = 1
-    ORDER BY created_at DESC
+    SELECT c.id, c.nombre, c.apellidos, c.created_at,
+           COALESCE(SUM(CASE WHEN cap.tipo_inversion = 'fija' THEN cap.importe_ingresado - cap.importe_retirado ELSE 0 END), 0) as capital_fijo,
+           COALESCE(SUM(CASE WHEN cap.tipo_inversion = 'variable' THEN cap.importe_ingresado - cap.importe_retirado ELSE 0 END), 0) as capital_variable,
+           COALESCE(SUM(cap.importe_ingresado - cap.importe_retirado), 0) as capital_total,
+           COALESCE(SUM(CASE WHEN cap.tipo_inversion = 'fija' THEN cap.rentabilidad ELSE 0 END), 0) as rent_fija,
+           COALESCE(SUM(CASE WHEN cap.tipo_inversion = 'variable' THEN cap.rentabilidad ELSE 0 END), 0) as rent_variable
+    FROM clientes c
+    LEFT JOIN capital cap ON c.id = cap.cliente_id AND cap.activo = 1
+    WHERE c.activo = 1 AND c.registro_completo = 1
+    GROUP BY c.id, c.nombre, c.apellidos, c.created_at
+    ORDER BY c.created_at DESC
     LIMIT 5
 ")->fetchAll();
 ?>
@@ -447,26 +468,34 @@ $ultimosClientes = $db->query("
                                     </tr>
                                     <?php else: ?>
                                         <?php foreach ($ultimosClientes as $cliente):
-                                            $rentFijo = $cliente['capital_fijo'] > 0 ? $rentabilidadFija : 0;
-                                            $rentVariable = $cliente['capital_variable'] > 0 ? $rentabilidadVariableActual : 0;
+                                            $capFijo = floatval($cliente['capital_fijo']);
+                                            $capVariable = floatval($cliente['capital_variable']);
+                                            $capTotal = floatval($cliente['capital_total']);
+                                            $rentFijoEuros = floatval($cliente['rent_fija']);
+                                            $rentVariableEuros = floatval($cliente['rent_variable']);
+
+                                            // Calcular porcentajes de rentabilidad
+                                            $rentFijoPct = $capFijo > 0 ? ($rentFijoEuros / $capFijo) * 100 : ($capFijo > 0 ? $rentabilidadFija : 0);
+                                            $rentVariablePct = $capVariable > 0 ? ($rentVariableEuros / $capVariable) * 100 : ($capVariable > 0 ? $rentabilidadVariableActual : 0);
+
                                             $mediaRent = 0;
-                                            if ($rentFijo > 0 && $rentVariable > 0) {
-                                                $mediaRent = ($rentFijo + $rentVariable) / 2;
-                                            } elseif ($rentFijo > 0) {
-                                                $mediaRent = $rentFijo;
-                                            } elseif ($rentVariable > 0) {
-                                                $mediaRent = $rentVariable;
+                                            if ($capFijo > 0 && $capVariable > 0) {
+                                                $mediaRent = (($rentFijoEuros + $rentVariableEuros) / $capTotal) * 100;
+                                            } elseif ($capFijo > 0) {
+                                                $mediaRent = $rentFijoPct;
+                                            } elseif ($capVariable > 0) {
+                                                $mediaRent = $rentVariablePct;
                                             }
                                         ?>
                                         <tr>
                                             <td>
                                                 <strong><?php echo escape($cliente['nombre'] . ' ' . $cliente['apellidos']); ?></strong>
                                             </td>
-                                            <td><strong><?php echo formatMoney($cliente['capital_invertido']); ?></strong></td>
-                                            <td style="color: var(--blue-accent);"><?php echo formatMoney($cliente['capital_fijo']); ?></td>
-                                            <td style="color: var(--green-accent);"><?php echo formatMoney($cliente['capital_variable']); ?></td>
-                                            <td style="color: var(--blue-accent);"><?php echo number_format($rentFijo, 1, ',', '.'); ?>%</td>
-                                            <td style="color: var(--green-accent);"><?php echo number_format($rentVariable, 1, ',', '.'); ?>%</td>
+                                            <td><strong><?php echo formatMoney($capTotal); ?></strong></td>
+                                            <td style="color: var(--blue-accent);"><?php echo formatMoney($capFijo); ?></td>
+                                            <td style="color: var(--green-accent);"><?php echo formatMoney($capVariable); ?></td>
+                                            <td style="color: var(--blue-accent);"><?php echo number_format($rentFijoPct, 1, ',', '.'); ?>%</td>
+                                            <td style="color: var(--green-accent);"><?php echo number_format($rentVariablePct, 1, ',', '.'); ?>%</td>
                                             <td><strong><?php echo number_format($mediaRent, 1, ',', '.'); ?>%</strong></td>
                                         </tr>
                                         <?php endforeach; ?>

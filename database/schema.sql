@@ -40,17 +40,13 @@ CREATE TABLE IF NOT EXISTS `clientes` (
   `provincia` VARCHAR(100) DEFAULT NULL,
   `pais` VARCHAR(100) DEFAULT 'España',
   `telefono` VARCHAR(20) DEFAULT NULL,
-  `capital_total` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital total aportado por el cliente',
-  `capital_invertido` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital actualmente invertido en vehículos',
-  `capital_reserva` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital pendiente de invertir (en reserva)',
-  `tipo_inversion` ENUM('fija', 'variable') DEFAULT NULL,
+  `capital_total` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital total aportado por el cliente (calculado desde tabla capital)',
   `registro_completo` TINYINT(1) NOT NULL DEFAULT 0,
   `activo` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
-  KEY `idx_tipo_inversion` (`tipo_inversion`),
   KEY `idx_activo` (`activo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -147,6 +143,86 @@ CREATE TABLE IF NOT EXISTS `inversiones_vehiculo` (
   CONSTRAINT `fk_inversion_vehiculo` FOREIGN KEY (`vehiculo_id`) REFERENCES `vehiculos` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_inversion_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Tabla: capital (movimientos de capital por cliente)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `capital` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `fecha_ingreso` DATE NOT NULL COMMENT 'Fecha de ingreso del capital',
+  `cliente_id` INT UNSIGNED NOT NULL,
+  `importe_ingresado` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `fecha_retirada` DATE DEFAULT NULL COMMENT 'Fecha de retirada (si aplica)',
+  `importe_retirado` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `rentabilidad` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Rentabilidad generada en euros',
+  `rentabilidad_porcentual` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT 'Rentabilidad en porcentaje',
+  `tipo_inversion` ENUM('fija', 'variable') NOT NULL DEFAULT 'fija',
+  `vehiculo_id` INT UNSIGNED DEFAULT NULL COMMENT 'Vehículo asociado (opcional)',
+  `activo` TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'Si está activo se computa en los cálculos',
+  `notas` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_cliente` (`cliente_id`),
+  KEY `idx_vehiculo` (`vehiculo_id`),
+  KEY `idx_activo` (`activo`),
+  KEY `idx_tipo_inversion` (`tipo_inversion`),
+  CONSTRAINT `fk_capital_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_capital_vehiculo` FOREIGN KEY (`vehiculo_id`) REFERENCES `vehiculos` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Tabla: conceptos (tipos de conceptos para apuntes)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `conceptos` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `concepto` VARCHAR(50) NOT NULL,
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Tabla: apuntes (apuntes contables)
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `apuntes` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `fecha` DATE NOT NULL,
+  `concepto_id` INT UNSIGNED NOT NULL,
+  `descripcion` VARCHAR(200) DEFAULT NULL,
+  `cliente_id` INT UNSIGNED DEFAULT NULL,
+  `vehiculo_id` INT UNSIGNED DEFAULT NULL,
+  `importe` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `tipo_apunte` ENUM('D', 'H') NOT NULL DEFAULT 'D' COMMENT 'D=Debe, H=Haber',
+  `realizado` TINYINT(1) NOT NULL DEFAULT 0,
+  `activo` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_cliente` (`cliente_id`),
+  KEY `idx_vehiculo` (`vehiculo_id`),
+  KEY `idx_concepto` (`concepto_id`),
+  KEY `idx_activo` (`activo`),
+  KEY `idx_fecha` (`fecha`),
+  CONSTRAINT `fk_apunte_cliente` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_apunte_vehiculo` FOREIGN KEY (`vehiculo_id`) REFERENCES `vehiculos` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_apunte_concepto` FOREIGN KEY (`concepto_id`) REFERENCES `conceptos` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+-- Datos iniciales de conceptos
+-- --------------------------------------------------------
+INSERT INTO `conceptos` (`concepto`) VALUES
+('Ingreso de capital'),
+('Retirada de capital'),
+('Compra de vehículo'),
+('Venta de vehículo'),
+('Gastos de reparación'),
+('Gastos de ITV'),
+('Gastos de transferencia'),
+('Comisión'),
+('Rentabilidad'),
+('Otros');
 
 -- --------------------------------------------------------
 -- Tabla: contactos (formulario de contacto landing)

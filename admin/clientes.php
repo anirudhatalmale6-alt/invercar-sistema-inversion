@@ -31,8 +31,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $poblacion = cleanInput($_POST['poblacion'] ?? '');
             $provincia = cleanInput($_POST['provincia'] ?? '');
             $pais = cleanInput($_POST['pais'] ?? 'España');
-            $capital_invertido = floatval($_POST['capital_invertido'] ?? 0);
-            $tipo_inversion = cleanInput($_POST['tipo_inversion'] ?? '');
             $activo = intval($_POST['activo'] ?? 1);
 
             // Validaciones
@@ -40,8 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = 'Nombre, apellidos y email son obligatorios.';
             } elseif (!validarEmail($email)) {
                 $error = 'El email no es válido.';
-            } elseif (!in_array($tipo_inversion, ['fija', 'variable', ''])) {
-                $error = 'Tipo de inversión no válido.';
             } else {
                 try {
                     if ($action === 'crear') {
@@ -55,10 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $passwordTemp = bin2hex(random_bytes(4));
                             $passwordHash = password_hash($passwordTemp, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
 
-                            $sql = "INSERT INTO clientes (nombre, apellidos, email, password, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, capital_invertido, tipo_inversion, activo, registro_completo, email_verificado)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)";
+                            $sql = "INSERT INTO clientes (nombre, apellidos, email, password, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, activo, registro_completo, email_verificado)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)";
                             $stmt = $db->prepare($sql);
-                            $stmt->execute([$nombre, $apellidos, $email, $passwordHash, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $capital_invertido, $tipo_inversion ?: null, $activo]);
+                            $stmt->execute([$nombre, $apellidos, $email, $passwordHash, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo]);
                             $exito = "Cliente creado correctamente. Contraseña temporal: $passwordTemp";
                         }
                     } else {
@@ -68,9 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($stmt->fetch()) {
                             $error = 'Ya existe otro cliente con ese email.';
                         } else {
-                            $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, capital_invertido=?, tipo_inversion=?, activo=? WHERE id=?";
+                            $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=? WHERE id=?";
                             $stmt = $db->prepare($sql);
-                            $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $capital_invertido, $tipo_inversion ?: null, $activo, $id]);
+                            $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $id]);
                             $exito = 'Cliente actualizado correctamente.';
                         }
                     }
@@ -144,6 +140,7 @@ if (isset($_GET['editar'])) {
 // Cliente detalle
 $clienteDetalle = null;
 $rentabilidadCliente = [];
+$capitalCliente = null;
 if (isset($_GET['ver'])) {
     $stmt = $db->prepare("SELECT * FROM clientes WHERE id = ?");
     $stmt->execute([intval($_GET['ver'])]);
@@ -153,6 +150,23 @@ if (isset($_GET['ver'])) {
         $stmt = $db->prepare("SELECT * FROM rentabilidad_semanal WHERE cliente_id = ? ORDER BY anio DESC, semana ASC");
         $stmt->execute([$clienteDetalle['id']]);
         $rentabilidadCliente = $stmt->fetchAll();
+
+        // Obtener capital del cliente desde la tabla capital
+        $stmt = $db->prepare("
+            SELECT
+                tipo_inversion,
+                SUM(importe_ingresado) as total_ingresado,
+                SUM(importe_retirado) as total_retirado,
+                SUM(rentabilidad) as total_rentabilidad
+            FROM capital
+            WHERE cliente_id = ? AND activo = 1
+            GROUP BY tipo_inversion
+        ");
+        $stmt->execute([$clienteDetalle['id']]);
+        $capitalCliente = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $capitalCliente[$row['tipo_inversion']] = $row;
+        }
     }
 }
 
@@ -222,15 +236,22 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                 <p><strong>Registrado:</strong> <?php echo date('d/m/Y H:i', strtotime($clienteDetalle['created_at'])); ?></p>
                             </div>
                             <div>
-                                <h4 style="color: var(--text-muted); margin-bottom: 10px;">Inversión</h4>
-                                <p style="font-size: 2rem; font-weight: bold; color: var(--gold);"><?php echo formatMoney($clienteDetalle['capital_invertido']); ?></p>
-                                <p><strong>Tipo:</strong>
-                                    <span class="badge <?php echo $clienteDetalle['tipo_inversion'] === 'fija' ? 'badge-info' : 'badge-success'; ?>">
-                                        <?php echo ucfirst($clienteDetalle['tipo_inversion'] ?? 'No definido'); ?>
-                                    </span>
-                                </p>
+                                <h4 style="color: var(--text-muted); margin-bottom: 10px;">Capital</h4>
+                                <?php
+                                $capitalFija = ($capitalCliente['fija']['total_ingresado'] ?? 0) - ($capitalCliente['fija']['total_retirado'] ?? 0);
+                                $capitalVariable = ($capitalCliente['variable']['total_ingresado'] ?? 0) - ($capitalCliente['variable']['total_retirado'] ?? 0);
+                                $capitalTotal = $capitalFija + $capitalVariable;
+                                $rentabilidadTotal = ($capitalCliente['fija']['total_rentabilidad'] ?? 0) + ($capitalCliente['variable']['total_rentabilidad'] ?? 0);
+                                ?>
+                                <p style="font-size: 2rem; font-weight: bold; color: var(--gold);"><?php echo formatMoney($capitalTotal); ?></p>
+                                <p><strong>Fija:</strong> <?php echo formatMoney($capitalFija); ?></p>
+                                <p><strong>Variable:</strong> <?php echo formatMoney($capitalVariable); ?></p>
+                                <p><strong>Rentabilidad:</strong> <span style="color: var(--success);"><?php echo formatMoney($rentabilidadTotal); ?></span></p>
 
-                                <div style="margin-top: 20px;">
+                                <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <a href="capital.php?cliente=<?php echo $clienteDetalle['id']; ?>" class="btn btn-sm btn-primary">
+                                        Gestionar Capital
+                                    </a>
                                     <form method="POST" style="display: inline;">
                                         <?php echo csrfField(); ?>
                                         <input type="hidden" name="action" value="reset_password">
@@ -340,36 +361,48 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                         <tr>
                                             <th>Cliente</th>
                                             <th>Email</th>
-                                            <th>Capital</th>
-                                            <th>Tipo</th>
+                                            <th>Capital Total</th>
+                                            <th>Fija</th>
+                                            <th>Variable</th>
                                             <th>Estado</th>
-                                            <th>Registro</th>
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($clientes as $c): ?>
+                                        <?php foreach ($clientes as $c):
+                                            // Obtener capital del cliente
+                                            $stmtCap = $db->prepare("
+                                                SELECT tipo_inversion,
+                                                       SUM(importe_ingresado) - SUM(importe_retirado) as capital
+                                                FROM capital WHERE cliente_id = ? AND activo = 1 GROUP BY tipo_inversion
+                                            ");
+                                            $stmtCap->execute([$c['id']]);
+                                            $capData = [];
+                                            foreach ($stmtCap->fetchAll() as $cap) {
+                                                $capData[$cap['tipo_inversion']] = $cap['capital'];
+                                            }
+                                            $capFija = $capData['fija'] ?? 0;
+                                            $capVariable = $capData['variable'] ?? 0;
+                                            $capTotal = $capFija + $capVariable;
+                                        ?>
                                         <tr>
                                             <td>
                                                 <strong><?php echo escape($c['nombre'] . ' ' . $c['apellidos']); ?></strong>
                                                 <br><small style="color: var(--text-muted);"><?php echo escape($c['dni']); ?></small>
                                             </td>
                                             <td><?php echo escape($c['email']); ?></td>
-                                            <td><?php echo formatMoney($c['capital_invertido']); ?></td>
-                                            <td>
-                                                <span class="badge <?php echo $c['tipo_inversion'] === 'fija' ? 'badge-info' : 'badge-success'; ?>">
-                                                    <?php echo ucfirst($c['tipo_inversion'] ?? '-'); ?>
-                                                </span>
-                                            </td>
+                                            <td style="font-weight: bold; color: var(--gold);"><?php echo formatMoney($capTotal); ?></td>
+                                            <td><span class="badge badge-info"><?php echo formatMoney($capFija); ?></span></td>
+                                            <td><span class="badge badge-success"><?php echo formatMoney($capVariable); ?></span></td>
                                             <td>
                                                 <span class="badge <?php echo $c['activo'] ? 'badge-success' : 'badge-danger'; ?>">
                                                     <?php echo $c['activo'] ? 'Activo' : 'Inactivo'; ?>
                                                 </span>
                                             </td>
-                                            <td><?php echo date('d/m/Y', strtotime($c['created_at'])); ?></td>
                                             <td>
                                                 <div class="actions">
                                                     <a href="?ver=<?php echo $c['id']; ?>" class="btn btn-sm btn-outline">Ver</a>
+                                                    <a href="capital.php?cliente=<?php echo $c['id']; ?>" class="btn btn-sm btn-primary">Capital</a>
                                                     <a href="?editar=<?php echo $c['id']; ?>" class="btn btn-sm btn-outline">Editar</a>
                                                     <form method="POST" style="display: inline;" onsubmit="return confirm('¿Eliminar este cliente? Esta acción no se puede deshacer.');">
                                                         <?php echo csrfField(); ?>
@@ -466,25 +499,6 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                             <label>Provincia</label>
                             <input type="text" name="provincia"
                                    value="<?php echo escape($clienteEditar['provincia'] ?? ''); ?>">
-                        </div>
-                    </div>
-
-                    <hr style="border-color: var(--border-color); margin: 20px 0;">
-                    <h4 style="margin-bottom: 15px; color: var(--gold);">Datos de Inversión</h4>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Capital Invertido (€)</label>
-                            <input type="number" name="capital_invertido" step="0.01" min="0"
-                                   value="<?php echo escape($clienteEditar['capital_invertido'] ?? '0'); ?>">
-                        </div>
-                        <div class="form-group">
-                            <label>Tipo de Inversión</label>
-                            <select name="tipo_inversion">
-                                <option value="">-- Seleccionar --</option>
-                                <option value="fija" <?php echo ($clienteEditar['tipo_inversion'] ?? '') === 'fija' ? 'selected' : ''; ?>>Fija</option>
-                                <option value="variable" <?php echo ($clienteEditar['tipo_inversion'] ?? '') === 'variable' ? 'selected' : ''; ?>>Variable</option>
-                            </select>
                         </div>
                     </div>
 
