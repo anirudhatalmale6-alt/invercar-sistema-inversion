@@ -96,6 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $gastos = floatval($_POST['gastos'] ?? 0);
             $valor_venta_previsto = floatval($_POST['valor_venta_previsto'] ?? 0);
             $precio_venta_real = !empty($_POST['precio_venta_real']) ? floatval($_POST['precio_venta_real']) : null;
+            $proveedor = cleanInput($_POST['proveedor'] ?? '');
+            $proveedor = !empty($proveedor) ? $proveedor : null;
             $estado = cleanInput($_POST['estado'] ?? 'en_estudio');
             $publico = intval($_POST['publico'] ?? 0);
             $fecha_compra = !empty($_POST['fecha_compra']) ? $_POST['fecha_compra'] : null;
@@ -155,10 +157,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 try {
                     if ($action === 'crear') {
-                        $sql = "INSERT INTO vehiculos (referencia, matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, estado, publico, fecha_compra, fecha_transporte, fecha_recepcion, fecha_documentacion, fecha_puesta_venta, fecha_venta, notas, foto)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $sql = "INSERT INTO vehiculos (referencia, matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, proveedor, estado, publico, fecha_compra, fecha_transporte, fecha_recepcion, fecha_documentacion, fecha_puesta_venta, fecha_venta, notas, foto)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $publico, $fecha_compra, $fecha_transporte, $fecha_recepcion, $fecha_documentacion, $fecha_puesta_venta, $fecha_venta, $notas, $foto]);
+                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $proveedor, $estado, $publico, $fecha_compra, $fecha_transporte, $fecha_recepcion, $fecha_documentacion, $fecha_puesta_venta, $fecha_venta, $notas, $foto]);
                         $vehiculoId = $db->lastInsertId();
 
                         // Guardar fotos adicionales
@@ -179,9 +181,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $foto = $actual['foto'] ?? null;
                         }
 
-                        $sql = "UPDATE vehiculos SET referencia=?, matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, publico=?, fecha_compra=?, fecha_transporte=?, fecha_recepcion=?, fecha_documentacion=?, fecha_puesta_venta=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
+                        $sql = "UPDATE vehiculos SET referencia=?, matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, proveedor=?, estado=?, publico=?, fecha_compra=?, fecha_transporte=?, fecha_recepcion=?, fecha_documentacion=?, fecha_puesta_venta=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $publico, $fecha_compra, $fecha_transporte, $fecha_recepcion, $fecha_documentacion, $fecha_puesta_venta, $fecha_venta, $notas, $foto, $id]);
+                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $proveedor, $estado, $publico, $fecha_compra, $fecha_transporte, $fecha_recepcion, $fecha_documentacion, $fecha_puesta_venta, $fecha_venta, $notas, $foto, $id]);
 
                         // Guardar fotos adicionales
                         if (!empty($fotosAdicionales)) {
@@ -420,8 +422,8 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                         $fin = new DateTime($fechaFin);
                                         $totalDias = max(1, $inicio->diff($fin)->days);
 
-                                        // Fechas intermedias
-                                        $fechas = [
+                                        // Fechas intermedias (solo las que tienen valor)
+                                        $fechasRaw = [
                                             ['fecha' => $fechaCompraV, 'label' => 'Compra', 'color' => '#3b82f6'],
                                             ['fecha' => $v['fecha_transporte'] ?? null, 'label' => 'Transporte', 'color' => '#8b5cf6'],
                                             ['fecha' => $v['fecha_recepcion'] ?? null, 'label' => 'Recepción', 'color' => '#06b6d4'],
@@ -429,25 +431,47 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             ['fecha' => $v['fecha_puesta_venta'] ?? null, 'label' => 'Puesta Venta', 'color' => '#22c55e'],
                                             ['fecha' => $fechaVentaV, 'label' => 'Venta', 'color' => '#ef4444'],
                                         ];
+
+                                        // Filtrar fechas con valor y ordenar
+                                        $fechas = array_filter($fechasRaw, function($f) { return !empty($f['fecha']); });
+                                        usort($fechas, function($a, $b) { return strtotime($a['fecha']) - strtotime($b['fecha']); });
+                                        $fechas = array_values($fechas);
                                     ?>
                                     <tr class="timeline-row">
-                                        <td colspan="11" style="padding: 8px 15px 15px; background: rgba(0,0,0,0.2);">
-                                            <div style="position: relative; height: 30px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 5px;">
+                                        <td colspan="11" style="padding: 8px 15px 20px; background: rgba(0,0,0,0.2);">
+                                            <div style="position: relative; height: 40px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 5px;">
                                                 <!-- Barra de progreso -->
                                                 <div style="position: absolute; top: 50%; transform: translateY(-50%); left: 0; right: 0; height: 4px; background: rgba(255,255,255,0.1);"></div>
-                                                <?php foreach ($fechas as $f):
-                                                    if (!$f['fecha']) continue;
+                                                <?php
+                                                $prevPorcentaje = null;
+                                                $prevFecha = null;
+                                                foreach ($fechas as $idx => $f):
                                                     $fechaPos = new DateTime($f['fecha']);
                                                     $diasDesdeInicio = $inicio->diff($fechaPos)->days;
                                                     $porcentaje = min(100, max(0, ($diasDesdeInicio / $totalDias) * 100));
+
+                                                    // Calcular días desde la fecha anterior
+                                                    $diasDesdeAnterior = null;
+                                                    if ($prevFecha !== null) {
+                                                        $prevFechaObj = new DateTime($prevFecha);
+                                                        $diasDesdeAnterior = $prevFechaObj->diff($fechaPos)->days;
+                                                        $posicionMedio = ($prevPorcentaje + $porcentaje) / 2;
+                                                    }
                                                 ?>
+                                                <?php if ($diasDesdeAnterior !== null && $diasDesdeAnterior > 0): ?>
+                                                <div style="position: absolute; left: <?php echo $posicionMedio; ?>%; top: 3px; transform: translateX(-50%); font-size: 0.55rem; color: var(--gold); font-weight: 600;"><?php echo $diasDesdeAnterior; ?>d</div>
+                                                <?php endif; ?>
                                                 <div style="position: absolute; left: <?php echo $porcentaje; ?>%; top: 50%; transform: translate(-50%, -50%); z-index: 2;">
                                                     <div style="width: 10px; height: 10px; border-radius: 50%; background: <?php echo $f['color']; ?>; border: 2px solid rgba(0,0,0,0.3);" title="<?php echo $f['label']; ?>: <?php echo date('d/m/Y', strtotime($f['fecha'])); ?>"></div>
                                                     <div style="position: absolute; top: 14px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; white-space: nowrap; color: <?php echo $f['color']; ?>;"><?php echo $f['label']; ?></div>
                                                 </div>
-                                                <?php endforeach; ?>
+                                                <?php
+                                                    $prevPorcentaje = $porcentaje;
+                                                    $prevFecha = $f['fecha'];
+                                                endforeach;
+                                                ?>
                                                 <!-- Total días -->
-                                                <div style="position: absolute; right: 5px; top: -2px; font-size: 0.65rem; color: var(--text-muted);"><?php echo $totalDias; ?> días</div>
+                                                <div style="position: absolute; right: 5px; top: -2px; font-size: 0.65rem; color: var(--text-muted);"><?php echo $totalDias; ?> días total</div>
                                             </div>
                                         </td>
                                     </tr>
@@ -548,11 +572,19 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Precio Venta Real (€)</label>
-                        <input type="number" name="precio_venta_real" step="0.01" min="0" style="max-width: 200px;"
-                               value="<?php echo escape($vehiculoEditar['precio_venta_real'] ?? ''); ?>"
-                               placeholder="Solo si ya se vendió">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Precio Venta Real (€)</label>
+                            <input type="number" name="precio_venta_real" step="0.01" min="0"
+                                   value="<?php echo escape($vehiculoEditar['precio_venta_real'] ?? ''); ?>"
+                                   placeholder="Solo si ya se vendió">
+                        </div>
+                        <div class="form-group">
+                            <label>Proveedor</label>
+                            <input type="text" name="proveedor" maxlength="150"
+                                   value="<?php echo escape($vehiculoEditar['proveedor'] ?? ''); ?>"
+                                   placeholder="Nombre del proveedor">
+                        </div>
                     </div>
 
                     <div class="form-row">

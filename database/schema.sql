@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS `vehiculos` (
   `gastos` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Gastos reales',
   `valor_venta_previsto` DECIMAL(15,2) NOT NULL,
   `precio_venta_real` DECIMAL(15,2) DEFAULT NULL,
+  `proveedor` VARCHAR(150) DEFAULT NULL COMMENT 'Proveedor del vehículo',
   `beneficio` DECIMAL(15,2) GENERATED ALWAYS AS (
     CASE
       WHEN precio_venta_real IS NOT NULL THEN precio_venta_real - precio_compra - gastos

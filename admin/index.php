@@ -778,16 +778,18 @@ $ultimosClientes = $db->query("
                                         $diasDesdeCompra = $hoy->diff($fechaCompra)->days;
                                     }
                                     ?>
-                                    <div class="vehicle-card-title" style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div class="vehicle-card-title" style="display: flex; justify-content: space-between; align-items: flex-start;">
                                         <span><?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?></span>
-                                        <?php if ($diasDesdeCompra !== null): ?>
-                                            <span style="font-weight: 600;"><?php echo $diasDesdeCompra; ?> días</span>
-                                        <?php endif; ?>
+                                        <div style="text-align: right;">
+                                            <?php if ($diasDesdeCompra !== null): ?>
+                                                <div style="font-weight: 600;"><?php echo $diasDesdeCompra; ?> días</div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($vehiculo['referencia'])): ?>
+                                                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;"><?php echo escape($vehiculo['referencia']); ?></div>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                     <div class="vehicle-card-subtitle">
-                                        <?php if (!empty($vehiculo['referencia'])): ?>
-                                            <span style="color: var(--text-muted);"><?php echo escape($vehiculo['referencia']); ?></span> ·
-                                        <?php endif; ?>
                                         <?php echo escape($vehiculo['version'] ?? ''); ?> · <?php echo escape($vehiculo['anio']); ?>
                                         <?php if ($vehiculo['kilometros']): ?>
                                             · <?php echo number_format($vehiculo['kilometros'], 0, ',', '.'); ?> km
