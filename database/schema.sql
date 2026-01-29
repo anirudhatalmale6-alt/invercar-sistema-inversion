@@ -150,6 +150,7 @@ CREATE TABLE IF NOT EXISTS `inversiones_vehiculo` (
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `capital` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `apunte_id` INT UNSIGNED DEFAULT NULL COMMENT 'Apunte que generó este registro de capital',
   `fecha_ingreso` DATE NOT NULL COMMENT 'Fecha de ingreso del capital',
   `cliente_id` INT UNSIGNED NOT NULL,
   `importe_ingresado` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
@@ -164,6 +165,7 @@ CREATE TABLE IF NOT EXISTS `capital` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  KEY `idx_apunte` (`apunte_id`),
   KEY `idx_cliente` (`cliente_id`),
   KEY `idx_vehiculo` (`vehiculo_id`),
   KEY `idx_activo` (`activo`),

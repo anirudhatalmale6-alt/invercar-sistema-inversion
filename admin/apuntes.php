@@ -76,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $db->prepare($sql);
                         $stmt->execute([$fecha, $concepto_id, $descripcion, $cliente_id, $vehiculo_id, $importe, $tipo_apunte, $realizado, $activo]);
+                        $nuevoApunteId = $db->lastInsertId();
 
                         // Obtener tipología del concepto
                         $stmtTip = $db->prepare("SELECT tipologia FROM conceptos WHERE id = ?");
@@ -90,22 +91,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $conceptoTexto = strtolower($conceptosCapital[$concepto_id]);
                             $esIngreso = strpos($conceptoTexto, 'ingreso') !== false;
 
-                            $sqlCap = "INSERT INTO capital (fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
-                                       VALUES (?, ?, ?, ?, 'variable', ?, 1, ?)";
+                            $sqlCap = "INSERT INTO capital (apunte_id, fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
+                                       VALUES (?, ?, ?, ?, ?, 'variable', ?, 1, ?)";
                             $stmtCap = $db->prepare($sqlCap);
                             if ($esIngreso) {
-                                $stmtCap->execute([$fecha, $cliente_id, $importe, 0, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                                $stmtCap->execute([$nuevoApunteId, $fecha, $cliente_id, $importe, 0, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
                             } else {
-                                $stmtCap->execute([$fecha, $cliente_id, 0, $importe, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                                $stmtCap->execute([$nuevoApunteId, $fecha, $cliente_id, 0, $importe, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
                             }
                             $mensajeExtra .= ' Se ha creado registro de capital.';
                         }
                         // Para otros apuntes con cliente y tipología ingreso, sumar al capital del cliente
                         elseif ($cliente_id && $tipologia === 'ingreso' && !$esConceptoCapital) {
-                            $sqlCap = "INSERT INTO capital (fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
-                                       VALUES (?, ?, ?, 0, 'variable', ?, 1, ?)";
+                            $sqlCap = "INSERT INTO capital (apunte_id, fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
+                                       VALUES (?, ?, ?, ?, 0, 'variable', ?, 1, ?)";
                             $stmtCap = $db->prepare($sqlCap);
-                            $stmtCap->execute([$fecha, $cliente_id, $importe, $vehiculo_id, 'Ingreso desde Apunte: ' . $descripcion]);
+                            $stmtCap->execute([$nuevoApunteId, $fecha, $cliente_id, $importe, $vehiculo_id, 'Ingreso desde Apunte: ' . $descripcion]);
                             $mensajeExtra .= ' Se ha sumado al capital del cliente.';
                         }
 
@@ -116,10 +117,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         $exito = 'Apunte creado correctamente.' . $mensajeExtra;
                     } else {
-                        // Obtener datos anteriores del apunte para ajustar gastos de vehículo si es necesario
+                        // Obtener datos anteriores del apunte para ajustar gastos de vehículo y capital si es necesario
                         $stmtOld = $db->prepare("SELECT a.*, c.tipologia FROM apuntes a LEFT JOIN conceptos c ON a.concepto_id = c.id WHERE a.id = ?");
                         $stmtOld->execute([$id]);
                         $apunteAnterior = $stmtOld->fetch();
+
+                        // Obtener tipología del nuevo concepto
+                        $stmtTip = $db->prepare("SELECT tipologia FROM conceptos WHERE id = ?");
+                        $stmtTip->execute([$concepto_id]);
+                        $tipologia = $stmtTip->fetchColumn() ?: 'gasto';
 
                         $mensajeExtra = '';
 
@@ -127,6 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($apunteAnterior && ($apunteAnterior['tipologia'] ?? '') === 'gasto_vehiculo' && $apunteAnterior['vehiculo_id']) {
                             $db->prepare("UPDATE vehiculos SET gastos = gastos - ? WHERE id = ?")->execute([$apunteAnterior['importe'], $apunteAnterior['vehiculo_id']]);
                         }
+
+                        // Eliminar registro de capital anterior vinculado a este apunte (si existe)
+                        $db->prepare("DELETE FROM capital WHERE apunte_id = ?")->execute([$id]);
 
                         // Actualizar el apunte
                         $sql = "UPDATE apuntes SET fecha=?, concepto_id=?, descripcion=?, cliente_id=?, vehiculo_id=?, importe=?, tipo_apunte=?, realizado=?, activo=? WHERE id=?";
@@ -137,6 +146,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($esGastoVehiculo && $vehiculo_id) {
                             $db->prepare("UPDATE vehiculos SET gastos = gastos + ? WHERE id = ?")->execute([$importe, $vehiculo_id]);
                             $mensajeExtra .= ' Se ha actualizado el gasto del vehículo.';
+                        }
+
+                        // Crear nuevo registro de capital si aplica
+                        if ($esConceptoCapital && $cliente_id) {
+                            $conceptoTexto = strtolower($conceptosCapital[$concepto_id]);
+                            $esIngreso = strpos($conceptoTexto, 'ingreso') !== false;
+
+                            $sqlCap = "INSERT INTO capital (apunte_id, fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
+                                       VALUES (?, ?, ?, ?, ?, 'variable', ?, 1, ?)";
+                            $stmtCap = $db->prepare($sqlCap);
+                            if ($esIngreso) {
+                                $stmtCap->execute([$id, $fecha, $cliente_id, $importe, 0, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                            } else {
+                                $stmtCap->execute([$id, $fecha, $cliente_id, 0, $importe, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                            }
+                            $mensajeExtra .= ' Se ha actualizado el registro de capital.';
+                        } elseif ($cliente_id && $tipologia === 'ingreso' && !$esConceptoCapital) {
+                            $sqlCap = "INSERT INTO capital (apunte_id, fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
+                                       VALUES (?, ?, ?, ?, 0, 'variable', ?, 1, ?)";
+                            $stmtCap = $db->prepare($sqlCap);
+                            $stmtCap->execute([$id, $fecha, $cliente_id, $importe, $vehiculo_id, 'Ingreso desde Apunte: ' . $descripcion]);
+                            $mensajeExtra .= ' Se ha actualizado el capital del cliente.';
                         }
 
                         $exito = 'Apunte actualizado correctamente.' . $mensajeExtra;
@@ -153,14 +184,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmtOld->execute([$id]);
                 $apunteAEliminar = $stmtOld->fetch();
 
+                $mensajeExtra = '';
+
                 // Si era gasto_vehiculo, restar del vehículo
                 if ($apunteAEliminar && ($apunteAEliminar['tipologia'] ?? '') === 'gasto_vehiculo' && $apunteAEliminar['vehiculo_id']) {
                     $db->prepare("UPDATE vehiculos SET gastos = gastos - ? WHERE id = ?")->execute([$apunteAEliminar['importe'], $apunteAEliminar['vehiculo_id']]);
+                    $mensajeExtra .= ' Se ha revertido el gasto del vehículo.';
+                }
+
+                // Eliminar registro de capital vinculado a este apunte (si existe)
+                $stmtCapital = $db->prepare("DELETE FROM capital WHERE apunte_id = ?");
+                $stmtCapital->execute([$id]);
+                if ($stmtCapital->rowCount() > 0) {
+                    $mensajeExtra .= ' Se ha eliminado el registro de capital asociado.';
                 }
 
                 $stmt = $db->prepare("DELETE FROM apuntes WHERE id = ?");
                 $stmt->execute([$id]);
-                $exito = 'Apunte eliminado correctamente.';
+                $exito = 'Apunte eliminado correctamente.' . $mensajeExtra;
             } catch (Exception $e) {
                 $error = 'Error al eliminar el apunte.';
             }
