@@ -396,14 +396,13 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="form-group" style="margin-bottom: 0; min-width: 180px;">
+                        <div class="form-group" style="margin-bottom: 0; min-width: 220px;">
                             <label>Vehículo</label>
                             <select name="vehiculo">
                                 <option value="">-- Todos --</option>
                                 <?php foreach ($vehiculos as $v): ?>
                                     <option value="<?php echo $v['id']; ?>" <?php echo $filtroVehiculo == $v['id'] ? 'selected' : ''; ?>>
-                                        <?php echo escape($v['marca'] . ' ' . $v['modelo']); ?>
-                                        <?php if ($v['matricula']): ?> (<?php echo escape($v['matricula']); ?>)<?php endif; ?>
+                                        <?php echo escape($v['marca'] . ' ' . $v['modelo']); ?><?php if ($v['referencia']): ?> · <?php echo escape($v['referencia']); ?><?php endif; ?><?php if ($v['matricula']): ?> · <?php echo escape($v['matricula']); ?><?php endif; ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>

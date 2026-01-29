@@ -335,12 +335,39 @@ $ultimosClientes = $db->query("
         .vehicle-investment-progress {
             height: 8px;
             background: rgba(255,255,255,0.1);
-            overflow: hidden;
+            overflow: visible;
+            position: relative;
         }
         .vehicle-investment-progress-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--gold), #c9a227);
             transition: width 0.3s ease;
+        }
+        .vehicle-investment-marker {
+            position: absolute;
+            top: -2px;
+            width: 2px;
+            height: 12px;
+            transform: translateX(-50%);
+        }
+        .vehicle-investment-marker.compra {
+            background: var(--blue-accent);
+        }
+        .vehicle-investment-marker.prevision {
+            background: var(--warning);
+        }
+        .vehicle-investment-marker-label {
+            position: absolute;
+            top: 14px;
+            font-size: 0.6rem;
+            white-space: nowrap;
+            transform: translateX(-50%);
+        }
+        .vehicle-investment-marker-label.compra {
+            color: var(--blue-accent);
+        }
+        .vehicle-investment-marker-label.prevision {
+            color: var(--warning);
         }
         .vehicle-card-image .no-image {
             color: var(--text-muted);
@@ -786,16 +813,27 @@ $ultimosClientes = $db->query("
                                     <?php
                                     // Investment progress bar - now using Compra + Prevision de gastos
                                     $capitalInvertidoVeh = $capitalPorVehiculo[$vehiculo['id']] ?? 0;
-                                    $inversionNecesaria = floatval($vehiculo['precio_compra']) + floatval($vehiculo['prevision_gastos'] ?? 0);
+                                    $precioCompra = floatval($vehiculo['precio_compra']);
+                                    $prevGastosVeh = floatval($vehiculo['prevision_gastos'] ?? 0);
+                                    $inversionNecesaria = $precioCompra + $prevGastosVeh;
                                     $porcentajeInvertido = $inversionNecesaria > 0 ? min(100, ($capitalInvertidoVeh / $inversionNecesaria) * 100) : 0;
+                                    // Calcular posiciones de los marcadores
+                                    $posCompra = $inversionNecesaria > 0 ? ($precioCompra / $inversionNecesaria) * 100 : 0;
+                                    $posPrevision = 100; // Siempre al final ya que es compra + prevision
                                     ?>
-                                    <div class="vehicle-investment-bar">
+                                    <div class="vehicle-investment-bar" style="margin-bottom: 20px;">
                                         <div class="vehicle-investment-label">
                                             <span>Inversión</span>
                                             <span><?php echo formatMoney($capitalInvertidoVeh); ?> / <?php echo formatMoney($inversionNecesaria); ?></span>
                                         </div>
                                         <div class="vehicle-investment-progress">
                                             <div class="vehicle-investment-progress-fill" style="width: <?php echo number_format($porcentajeInvertido, 1); ?>%;"></div>
+                                            <?php if ($prevGastosVeh > 0): ?>
+                                            <div class="vehicle-investment-marker compra" style="left: <?php echo number_format($posCompra, 1); ?>%;" title="Compra: <?php echo formatMoney($precioCompra); ?>"></div>
+                                            <span class="vehicle-investment-marker-label compra" style="left: <?php echo number_format($posCompra, 1); ?>%;">Compra</span>
+                                            <div class="vehicle-investment-marker prevision" style="left: <?php echo number_format($posPrevision, 1); ?>%;" title="+ Prev. Gastos: <?php echo formatMoney($prevGastosVeh); ?>"></div>
+                                            <span class="vehicle-investment-marker-label prevision" style="left: <?php echo number_format($posPrevision, 1); ?>%;">+Gastos</span>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
