@@ -55,7 +55,7 @@ $statsVehiculos = $db->query("
 
 // Vehículos activos para las fichas
 $vehiculosActivos = $db->query("
-    SELECT id, referencia, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado, notas
+    SELECT id, referencia, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado, publico, notas
     FROM vehiculos
     WHERE estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado')
     ORDER BY created_at DESC
@@ -253,6 +253,16 @@ $ultimosClientes = $db->query("
         .vehicle-card-status.en_preparacion { background: var(--warning); color: #000; }
         .vehicle-card-status.en_venta { background: var(--green-accent); color: #000; }
         .vehicle-card-status.reservado { background: var(--blue-accent); color: #fff; }
+        .vehicle-card-visibility {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 1.1rem;
+            z-index: 2;
+            background: rgba(0,0,0,0.6);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
         .vehicle-card-image {
             width: 100%;
             height: 180px;
@@ -698,6 +708,13 @@ $ultimosClientes = $db->query("
                             <div class="vehicle-card">
                                 <div class="vehicle-card-status <?php echo $vehiculo['estado']; ?>">
                                     <?php echo $estadoTextos[$vehiculo['estado']] ?? ucfirst(str_replace('_', ' ', $vehiculo['estado'])); ?>
+                                </div>
+                                <div class="vehicle-card-visibility" title="<?php echo ($vehiculo['publico'] ?? 0) ? 'Visible para clientes' : 'No visible para clientes'; ?>">
+                                    <?php if ($vehiculo['publico'] ?? 0): ?>
+                                        <span style="color: var(--green-accent);">👁</span>
+                                    <?php else: ?>
+                                        <span style="color: var(--danger);">🚫</span>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="vehicle-card-image">
                                     <?php if (!empty($vehiculo['notas'])): ?>

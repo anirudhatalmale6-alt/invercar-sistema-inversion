@@ -97,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $valor_venta_previsto = floatval($_POST['valor_venta_previsto'] ?? 0);
             $precio_venta_real = !empty($_POST['precio_venta_real']) ? floatval($_POST['precio_venta_real']) : null;
             $estado = cleanInput($_POST['estado'] ?? 'en_estudio');
+            $publico = intval($_POST['publico'] ?? 0);
             $fecha_compra = !empty($_POST['fecha_compra']) ? $_POST['fecha_compra'] : null;
             $fecha_venta = !empty($_POST['fecha_venta']) ? $_POST['fecha_venta'] : null;
             $notas = cleanInput($_POST['notas'] ?? '');
@@ -150,10 +151,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 try {
                     if ($action === 'crear') {
-                        $sql = "INSERT INTO vehiculos (referencia, matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, estado, fecha_compra, fecha_venta, notas, foto)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $sql = "INSERT INTO vehiculos (referencia, matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, estado, publico, fecha_compra, fecha_venta, notas, foto)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto]);
+                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $publico, $fecha_compra, $fecha_venta, $notas, $foto]);
                         $vehiculoId = $db->lastInsertId();
 
                         // Guardar fotos adicionales
@@ -174,9 +175,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $foto = $actual['foto'] ?? null;
                         }
 
-                        $sql = "UPDATE vehiculos SET referencia=?, matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, fecha_compra=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
+                        $sql = "UPDATE vehiculos SET referencia=?, matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, publico=?, fecha_compra=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto, $id]);
+                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $publico, $fecha_compra, $fecha_venta, $notas, $foto, $id]);
 
                         // Guardar fotos adicionales
                         if (!empty($fotosAdicionales)) {
@@ -415,7 +416,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
 
     <!-- Modal Crear/Editar Vehículo -->
     <div class="modal-overlay <?php echo ($vehiculoEditar || isset($_GET['crear'])) ? 'active' : ''; ?>" id="modalVehiculo">
-        <div class="modal" style="max-width: 700px;">
+        <div class="modal" style="max-width: 900px;">
             <div class="modal-header">
                 <h3><?php echo $vehiculoEditar ? 'Editar Vehículo' : 'Añadir Vehículo'; ?></h3>
                 <a href="vehiculos.php" class="modal-close">&times;</a>
@@ -517,6 +518,16 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                 <option value="vendido" <?php echo ($vehiculoEditar['estado'] ?? '') === 'vendido' ? 'selected' : ''; ?>>Vendido</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label>Público para Clientes</label>
+                            <select name="publico">
+                                <option value="0" <?php echo ($vehiculoEditar['publico'] ?? 0) == 0 ? 'selected' : ''; ?>>No</option>
+                                <option value="1" <?php echo ($vehiculoEditar['publico'] ?? 0) == 1 ? 'selected' : ''; ?>>Sí</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
                         <div class="form-group">
                             <label>Foto Principal</label>
                             <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">

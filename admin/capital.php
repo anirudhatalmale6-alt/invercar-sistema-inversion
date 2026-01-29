@@ -288,7 +288,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
 
     <!-- Modal Crear/Editar Movimiento -->
     <div class="modal-overlay <?php echo ($movimientoEditar || isset($_GET['crear'])) ? 'active' : ''; ?>" id="modalCapital">
-        <div class="modal" style="max-width: 700px;">
+        <div class="modal" style="max-width: 900px;">
             <div class="modal-header">
                 <h3><?php echo $movimientoEditar ? 'Editar Movimiento' : 'Añadir Movimiento de Capital'; ?></h3>
                 <a href="?cliente=<?php echo $clienteId; ?>" class="modal-close">&times;</a>

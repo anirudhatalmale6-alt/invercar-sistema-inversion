@@ -502,7 +502,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
 
     <!-- Modal Crear/Editar Cliente -->
     <div class="modal-overlay <?php echo ($clienteEditar || isset($_GET['crear'])) ? 'active' : ''; ?>" id="modalCliente">
-        <div class="modal" style="max-width: 700px;">
+        <div class="modal" style="max-width: 900px;">
             <div class="modal-header">
                 <h3><?php echo $clienteEditar ? 'Editar Cliente' : 'Añadir Cliente'; ?></h3>
                 <a href="clientes.php" class="modal-close">&times;</a>

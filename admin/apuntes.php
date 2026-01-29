@@ -34,7 +34,7 @@ foreach ($conceptos as $c) {
 $clientes = $db->query("SELECT id, nombre, apellidos FROM clientes WHERE activo = 1 ORDER BY nombre, apellidos")->fetchAll();
 
 // Obtener vehículos para el dropdown
-$vehiculos = $db->query("SELECT id, matricula, marca, modelo, anio FROM vehiculos ORDER BY marca, modelo")->fetchAll();
+$vehiculos = $db->query("SELECT id, referencia, matricula, marca, modelo, anio FROM vehiculos ORDER BY marca, modelo")->fetchAll();
 
 // Procesar acciones
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -518,7 +518,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 
     <!-- Modal Crear/Editar Apunte -->
     <div class="modal-overlay <?php echo ($apunteEditar || isset($_GET['crear'])) ? 'active' : ''; ?>" id="modalApunte">
-        <div class="modal" style="max-width: 700px;">
+        <div class="modal" style="max-width: 900px;">
             <div class="modal-header">
                 <h3><?php echo $apunteEditar ? 'Editar Apunte' : 'Añadir Apunte'; ?></h3>
                 <a href="apuntes.php" class="modal-close">&times;</a>
@@ -574,8 +574,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                                 <option value="">-- Sin vehículo --</option>
                                 <?php foreach ($vehiculos as $v): ?>
                                     <option value="<?php echo $v['id']; ?>" <?php echo ($apunteEditar['vehiculo_id'] ?? '') == $v['id'] ? 'selected' : ''; ?>>
-                                        <?php echo escape($v['marca'] . ' ' . $v['modelo']); ?>
-                                        <?php if ($v['matricula']): ?> (<?php echo escape($v['matricula']); ?>)<?php endif; ?>
+                                        <?php echo escape($v['marca'] . ' ' . $v['modelo']); ?><?php if ($v['referencia']): ?> · <?php echo escape($v['referencia']); ?><?php endif; ?><?php if ($v['matricula']): ?> · <?php echo escape($v['matricula']); ?><?php endif; ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
