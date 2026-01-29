@@ -116,10 +116,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         $exito = 'Apunte creado correctamente.' . $mensajeExtra;
                     } else {
+                        // Obtener datos anteriores del apunte para ajustar gastos de vehículo si es necesario
+                        $stmtOld = $db->prepare("SELECT a.*, c.tipologia FROM apuntes a LEFT JOIN conceptos c ON a.concepto_id = c.id WHERE a.id = ?");
+                        $stmtOld->execute([$id]);
+                        $apunteAnterior = $stmtOld->fetch();
+
+                        $mensajeExtra = '';
+
+                        // Si el apunte anterior era gasto_vehiculo, restar del vehículo anterior
+                        if ($apunteAnterior && ($apunteAnterior['tipologia'] ?? '') === 'gasto_vehiculo' && $apunteAnterior['vehiculo_id']) {
+                            $db->prepare("UPDATE vehiculos SET gastos = gastos - ? WHERE id = ?")->execute([$apunteAnterior['importe'], $apunteAnterior['vehiculo_id']]);
+                        }
+
+                        // Actualizar el apunte
                         $sql = "UPDATE apuntes SET fecha=?, concepto_id=?, descripcion=?, cliente_id=?, vehiculo_id=?, importe=?, tipo_apunte=?, realizado=?, activo=? WHERE id=?";
                         $stmt = $db->prepare($sql);
                         $stmt->execute([$fecha, $concepto_id, $descripcion, $cliente_id, $vehiculo_id, $importe, $tipo_apunte, $realizado, $activo, $id]);
-                        $exito = 'Apunte actualizado correctamente.';
+
+                        // Si el nuevo apunte es gasto_vehiculo, sumar al nuevo vehículo
+                        if ($esGastoVehiculo && $vehiculo_id) {
+                            $db->prepare("UPDATE vehiculos SET gastos = gastos + ? WHERE id = ?")->execute([$importe, $vehiculo_id]);
+                            $mensajeExtra .= ' Se ha actualizado el gasto del vehículo.';
+                        }
+
+                        $exito = 'Apunte actualizado correctamente.' . $mensajeExtra;
                     }
                 } catch (Exception $e) {
                     $error = DEBUG_MODE ? $e->getMessage() : 'Error al guardar el apunte.';
@@ -128,6 +148,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'eliminar') {
             $id = intval($_POST['id'] ?? 0);
             try {
+                // Obtener datos del apunte antes de eliminar para ajustar gastos si es necesario
+                $stmtOld = $db->prepare("SELECT a.*, c.tipologia FROM apuntes a LEFT JOIN conceptos c ON a.concepto_id = c.id WHERE a.id = ?");
+                $stmtOld->execute([$id]);
+                $apunteAEliminar = $stmtOld->fetch();
+
+                // Si era gasto_vehiculo, restar del vehículo
+                if ($apunteAEliminar && ($apunteAEliminar['tipologia'] ?? '') === 'gasto_vehiculo' && $apunteAEliminar['vehiculo_id']) {
+                    $db->prepare("UPDATE vehiculos SET gastos = gastos - ? WHERE id = ?")->execute([$apunteAEliminar['importe'], $apunteAEliminar['vehiculo_id']]);
+                }
+
                 $stmt = $db->prepare("DELETE FROM apuntes WHERE id = ?");
                 $stmt->execute([$id]);
                 $exito = 'Apunte eliminado correctamente.';
@@ -468,7 +498,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                         </div>
                         <div class="form-group">
                             <label>Concepto *</label>
-                            <select name="concepto_id" required>
+                            <select name="concepto_id" id="concepto_id" required>
                                 <option value="">-- Seleccionar --</option>
                                 <?php foreach ($conceptos as $c): ?>
                                     <option value="<?php echo $c['id']; ?>" <?php echo ($apunteEditar['concepto_id'] ?? '') == $c['id'] ? 'selected' : ''; ?>>
@@ -481,7 +511,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 
                     <div class="form-group">
                         <label>Descripción</label>
-                        <input type="text" name="descripcion" maxlength="200"
+                        <input type="text" name="descripcion" id="descripcion" maxlength="200"
                                value="<?php echo escape($apunteEditar['descripcion'] ?? ''); ?>">
                     </div>
 
@@ -570,6 +600,12 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
             var clienteLabel = clienteSelect.previousElementSibling;
             var vehiculoSelect = document.querySelector('select[name="vehiculo_id"]');
             var vehiculoLabel = vehiculoSelect.previousElementSibling;
+            var descripcionInput = document.getElementById('descripcion');
+
+            // Auto-rellenar descripción con el texto del concepto seleccionado (solo si está vacío)
+            if (this.value && descripcionInput.value.trim() === '') {
+                descripcionInput.value = this.options[this.selectedIndex].text;
+            }
 
             // Cliente requerido para conceptos de capital
             if (conceptosCapitalIds.includes(conceptoId)) {

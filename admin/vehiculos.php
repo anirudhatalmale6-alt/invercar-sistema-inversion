@@ -36,7 +36,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
 
     // Header
-    fputcsv($output, ['ID', 'Matrícula', 'Marca', 'Modelo', 'Versión', 'Año', 'Kilómetros', 'Precio Compra', 'Prev. Gastos', 'Gastos Reales', 'Venta Prevista', 'Venta Real', 'Beneficio', 'Estado', 'Fecha Compra', 'Fecha Venta', 'Notas'], ';');
+    fputcsv($output, ['ID', 'Referencia', 'Matrícula', 'Marca', 'Modelo', 'Versión', 'Año', 'Kilómetros', 'Precio Compra', 'Prev. Gastos', 'Gastos Reales', 'Venta Prevista', 'Venta Real', 'Beneficio', 'Estado', 'Fecha Compra', 'Fecha Venta', 'Notas'], ';');
 
     $estadoTexto = [
         'en_estudio' => 'En Estudio',
@@ -51,6 +51,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 
         fputcsv($output, [
             $v['id'],
+            $v['referencia'] ?? '',
             $v['matricula'] ?? '',
             $v['marca'],
             $v['modelo'],
@@ -83,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'crear' || $action === 'editar') {
             $id = intval($_POST['id'] ?? 0);
+            $referencia = cleanInput($_POST['referencia'] ?? '');
             $matricula = cleanInput($_POST['matricula'] ?? '');
             $marca = cleanInput($_POST['marca'] ?? '');
             $modelo = cleanInput($_POST['modelo'] ?? '');
@@ -98,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fecha_compra = !empty($_POST['fecha_compra']) ? $_POST['fecha_compra'] : null;
             $fecha_venta = !empty($_POST['fecha_venta']) ? $_POST['fecha_venta'] : null;
             $notas = cleanInput($_POST['notas'] ?? '');
+            $referencia = !empty($referencia) ? $referencia : null;
             $matricula = !empty($matricula) ? $matricula : null;
 
             // Validaciones
@@ -147,10 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 try {
                     if ($action === 'crear') {
-                        $sql = "INSERT INTO vehiculos (matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, estado, fecha_compra, fecha_venta, notas, foto)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $sql = "INSERT INTO vehiculos (referencia, matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, estado, fecha_compra, fecha_venta, notas, foto)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto]);
+                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto]);
                         $vehiculoId = $db->lastInsertId();
 
                         // Guardar fotos adicionales
@@ -171,9 +174,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $foto = $actual['foto'] ?? null;
                         }
 
-                        $sql = "UPDATE vehiculos SET matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, fecha_compra=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
+                        $sql = "UPDATE vehiculos SET referencia=?, matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, estado=?, fecha_compra=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto, $id]);
+                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $estado, $fecha_compra, $fecha_venta, $notas, $foto, $id]);
 
                         // Guardar fotos adicionales
                         if (!empty($fotosAdicionales)) {
@@ -424,6 +427,12 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                     <?php if ($vehiculoEditar): ?>
                         <input type="hidden" name="id" value="<?php echo $vehiculoEditar['id']; ?>">
                     <?php endif; ?>
+
+                    <div class="form-group">
+                        <label>Referencia</label>
+                        <input type="text" name="referencia" placeholder="Referencia interna"
+                               value="<?php echo escape($vehiculoEditar['referencia'] ?? ''); ?>">
+                    </div>
 
                     <div class="form-row">
                         <div class="form-group">

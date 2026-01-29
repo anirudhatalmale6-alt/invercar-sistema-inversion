@@ -883,6 +883,18 @@ table tbody tr:last-child td {
     background: rgba(0, 0, 0, 0.4);
 }
 
+/* Remove spinner buttons from number inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
 .form-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

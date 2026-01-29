@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS `rentabilidad_historico` (
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `vehiculos` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `referencia` VARCHAR(50) DEFAULT NULL COMMENT 'Referencia interna del vehículo',
   `matricula` VARCHAR(20) DEFAULT NULL COMMENT 'Matrícula del vehículo (opcional)',
   `marca` VARCHAR(50) NOT NULL,
   `modelo` VARCHAR(100) NOT NULL,
