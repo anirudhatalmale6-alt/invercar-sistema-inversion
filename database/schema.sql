@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS `vehiculos` (
     END
   ) STORED,
   `foto` VARCHAR(255) DEFAULT NULL,
-  `estado` ENUM('en_estudio', 'en_preparacion', 'en_venta', 'vendido', 'reservado') NOT NULL DEFAULT 'en_estudio',
+  `estado` ENUM('en_estudio', 'en_espera', 'en_preparacion', 'en_venta', 'reservado', 'vendido') NOT NULL DEFAULT 'en_estudio',
   `publico` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Si es visible para clientes en su panel',
   `fecha_compra` DATE DEFAULT NULL,
   `fecha_transporte` DATE DEFAULT NULL COMMENT 'Fecha de transporte del vehículo',
