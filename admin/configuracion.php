@@ -133,6 +133,24 @@ foreach ($stmt->fetchAll() as $row) {
 // Obtener conceptos ordenados
 $conceptos = $db->query("SELECT * FROM conceptos ORDER BY orden ASC, id ASC")->fetchAll();
 
+// Si todos los conceptos tienen orden 0, inicializar el orden automáticamente
+$todosOrdenCero = true;
+foreach ($conceptos as $c) {
+    if (($c['orden'] ?? 0) != 0) {
+        $todosOrdenCero = false;
+        break;
+    }
+}
+if ($todosOrdenCero && count($conceptos) > 0) {
+    $orden = 1;
+    foreach ($conceptos as $c) {
+        $db->prepare("UPDATE conceptos SET orden = ? WHERE id = ?")->execute([$orden, $c['id']]);
+        $orden++;
+    }
+    // Recargar conceptos con el nuevo orden
+    $conceptos = $db->query("SELECT * FROM conceptos ORDER BY orden ASC, id ASC")->fetchAll();
+}
+
 $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE leido = 0")->fetch()['total'];
 ?>
 <!DOCTYPE html>

@@ -115,6 +115,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $db->prepare("UPDATE vehiculos SET gastos = gastos + ? WHERE id = ?")->execute([$importe, $vehiculo_id]);
                             $mensajeExtra .= ' Se ha actualizado el gasto del vehículo.';
                         }
+
+                        // Si el concepto es "Transporte" y hay vehículo, actualizar fecha_transporte
+                        if ($vehiculo_id) {
+                            $stmtConcepto = $db->prepare("SELECT concepto FROM conceptos WHERE id = ?");
+                            $stmtConcepto->execute([$concepto_id]);
+                            $conceptoNombre = strtolower($stmtConcepto->fetchColumn() ?: '');
+
+                            if (strpos($conceptoNombre, 'transporte') !== false) {
+                                $db->prepare("UPDATE vehiculos SET fecha_transporte = ? WHERE id = ? AND (fecha_transporte IS NULL OR fecha_transporte = '')")->execute([$fecha, $vehiculo_id]);
+                                $mensajeExtra .= ' Se ha actualizado la fecha de transporte.';
+                            }
+                        }
+
                         $exito = 'Apunte creado correctamente.' . $mensajeExtra;
                     } else {
                         // Obtener datos anteriores del apunte para ajustar gastos de vehículo y capital si es necesario
