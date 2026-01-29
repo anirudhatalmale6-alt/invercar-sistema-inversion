@@ -105,12 +105,12 @@ function getEstadisticasSistema() {
     $stmt = $db->query("SELECT COALESCE(SUM(precio_compra + COALESCE(gastos, 0)), 0) as total FROM vehiculos WHERE estado IN ('en_venta', 'reservado')");
     $capitalEnVehiculos = $stmt->fetch()['total'] ?? 0;
 
-    // Inversión actual: suma de valor_venta_previsto de vehículos activos que NO estén en estudio
+    // Inversión actual: suma de valor_venta_previsto de vehículos activos que NO estén en estudio ni en espera
     $stmt = $db->query("SELECT COALESCE(SUM(valor_venta_previsto), 0) as total FROM vehiculos WHERE estado IN ('en_preparacion', 'en_venta', 'reservado')");
     $inversionActual = $stmt->fetch()['total'] ?? 0;
 
     // Número de vehículos comprados pero no vendidos (bienes raíces)
-    $stmt = $db->query("SELECT COUNT(*) as total FROM vehiculos WHERE estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado')");
+    $stmt = $db->query("SELECT COUNT(*) as total FROM vehiculos WHERE estado IN ('en_estudio', 'en_espera', 'en_preparacion', 'en_venta', 'reservado')");
     $vehiculosActuales = $stmt->fetch()['total'] ?? 0;
 
     // Valor de venta previsto de vehículos

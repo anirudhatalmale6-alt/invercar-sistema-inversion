@@ -40,6 +40,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 
     $estadoTexto = [
         'en_estudio' => 'En Estudio',
+        'en_espera' => 'En Espera',
         'en_preparacion' => 'En Preparación',
         'en_venta' => 'En Venta',
         'reservado' => 'Reservado',
@@ -381,6 +382,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             <?php
                                             $estadoBadge = [
                                                 'en_estudio' => 'badge-gold',
+                                                'en_espera' => 'badge-info',
                                                 'en_preparacion' => 'badge-warning',
                                                 'en_venta' => 'badge-success',
                                                 'reservado' => 'badge-info',
@@ -388,6 +390,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             ];
                                             $estadoTexto = [
                                                 'en_estudio' => 'En Estudio',
+                                                'en_espera' => 'En Espera',
                                                 'en_preparacion' => 'En Preparación',
                                                 'en_venta' => 'En Venta',
                                                 'reservado' => 'Reservado',
@@ -592,6 +595,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                             <label>Estado</label>
                             <select name="estado">
                                 <option value="en_estudio" <?php echo ($vehiculoEditar['estado'] ?? 'en_estudio') === 'en_estudio' ? 'selected' : ''; ?>>En Estudio</option>
+                                <option value="en_espera" <?php echo ($vehiculoEditar['estado'] ?? '') === 'en_espera' ? 'selected' : ''; ?>>En Espera</option>
                                 <option value="en_preparacion" <?php echo ($vehiculoEditar['estado'] ?? '') === 'en_preparacion' ? 'selected' : ''; ?>>En Preparación</option>
                                 <option value="en_venta" <?php echo ($vehiculoEditar['estado'] ?? '') === 'en_venta' ? 'selected' : ''; ?>>En Venta</option>
                                 <option value="reservado" <?php echo ($vehiculoEditar['estado'] ?? '') === 'reservado' ? 'selected' : ''; ?>>Reservado</option>

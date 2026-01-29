@@ -48,18 +48,27 @@ $statsVehiculos = $db->query("
         COUNT(*) as total,
         SUM(CASE WHEN estado = 'en_venta' THEN 1 ELSE 0 END) as en_venta,
         SUM(CASE WHEN estado = 'vendido' THEN 1 ELSE 0 END) as vendidos,
-        COALESCE(SUM(CASE WHEN estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado') THEN precio_compra + gastos ELSE 0 END), 0) as capital_invertido_vehiculos,
-        COALESCE(SUM(CASE WHEN estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado') THEN valor_venta_previsto ELSE 0 END), 0) as valor_previsto
+        COALESCE(SUM(CASE WHEN estado IN ('en_estudio', 'en_espera', 'en_preparacion', 'en_venta', 'reservado') THEN precio_compra + gastos ELSE 0 END), 0) as capital_invertido_vehiculos,
+        COALESCE(SUM(CASE WHEN estado IN ('en_estudio', 'en_espera', 'en_preparacion', 'en_venta', 'reservado') THEN valor_venta_previsto ELSE 0 END), 0) as valor_previsto
     FROM vehiculos
 ")->fetch();
 
+// Filtro de estado para vehículos
+$filtroEstado = $_GET['filtro_estado'] ?? 'todos_menos_estudio';
+
 // Vehículos activos para las fichas
-$vehiculosActivos = $db->query("
+$sqlVehiculos = "
     SELECT id, referencia, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado, publico, notas, fecha_compra
     FROM vehiculos
-    WHERE estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado')
-    ORDER BY fecha_compra DESC, created_at DESC
-")->fetchAll();
+    WHERE estado IN ('en_estudio', 'en_espera', 'en_preparacion', 'en_venta', 'reservado')
+";
+if ($filtroEstado === 'en_estudio') {
+    $sqlVehiculos .= " AND estado = 'en_estudio'";
+} elseif ($filtroEstado === 'todos_menos_estudio') {
+    $sqlVehiculos .= " AND estado != 'en_estudio'";
+}
+$sqlVehiculos .= " ORDER BY fecha_compra DESC, created_at DESC";
+$vehiculosActivos = $db->query($sqlVehiculos)->fetchAll();
 
 // Obtener fotos adicionales de cada vehículo
 $fotosPorVehiculo = [];
@@ -698,7 +707,14 @@ $ultimosClientes = $db->query("
                     </div>
 
                     <!-- Fichas de Vehículos -->
-                    <div class="section-title" style="margin-top: 30px;">Vehículos en Activo</div>
+                    <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div class="section-title" style="margin: 0;">Vehículos en Activo</div>
+                        <select id="filtroEstado" onchange="window.location.href='?filtro_estado=' + this.value" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem;">
+                            <option value="en_estudio" <?php echo $filtroEstado === 'en_estudio' ? 'selected' : ''; ?>>En Estudio</option>
+                            <option value="todos_menos_estudio" <?php echo $filtroEstado === 'todos_menos_estudio' ? 'selected' : ''; ?>>Todos menos En Estudio</option>
+                            <option value="todos" <?php echo $filtroEstado === 'todos' ? 'selected' : ''; ?>>Todos</option>
+                        </select>
+                    </div>
                     <?php if (empty($vehiculosActivos)): ?>
                         <div class="card" style="padding: 40px; text-align: center; color: var(--text-muted);">
                             No hay vehículos activos
@@ -715,11 +731,24 @@ $ultimosClientes = $db->query("
                             <?php
                                 $estadoTextos = [
                                     'en_estudio' => 'En Estudio',
+                                    'en_espera' => 'En Espera',
                                     'en_preparacion' => 'En Preparación',
                                     'en_venta' => 'En Venta',
                                     'reservado' => 'Reservado',
                                     'vendido' => 'Vendido'
                                 ];
+                                // Colores para cada estado según cliente:
+                                // En Estudio: Rojo, En Espera: Magenta, En Preparacion: Amarillo
+                                // En Venta: Violeta, Reservado: Negro, Vendido: Verde
+                                $estadoColores = [
+                                    'en_estudio' => ['bg' => '#dc2626', 'color' => '#fff'],
+                                    'en_espera' => ['bg' => '#d946ef', 'color' => '#fff'],
+                                    'en_preparacion' => ['bg' => '#eab308', 'color' => '#000'],
+                                    'en_venta' => ['bg' => '#8b5cf6', 'color' => '#fff'],
+                                    'reservado' => ['bg' => '#1f2937', 'color' => '#fff'],
+                                    'vendido' => ['bg' => '#22c55e', 'color' => '#000']
+                                ];
+                                $colorEstado = $estadoColores[$vehiculo['estado']] ?? ['bg' => '#6b7280', 'color' => '#fff'];
                             ?>
                             <?php
                                 // Collect all photos for this vehicle
@@ -733,7 +762,7 @@ $ultimosClientes = $db->query("
                                 $vehiculoGalleryId = 'gallery-' . $vehiculo['id'];
                             ?>
                             <div class="vehicle-card">
-                                <div class="vehicle-card-status <?php echo $vehiculo['estado']; ?>">
+                                <div class="vehicle-card-status" style="background: <?php echo $colorEstado['bg']; ?>; color: <?php echo $colorEstado['color']; ?>;">
                                     <?php echo $estadoTextos[$vehiculo['estado']] ?? ucfirst(str_replace('_', ' ', $vehiculo['estado'])); ?>
                                 </div>
                                 <div class="vehicle-card-visibility" title="<?php echo ($vehiculo['publico'] ?? 0) ? 'Visible para clientes' : 'No visible para clientes'; ?>">
