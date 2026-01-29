@@ -58,7 +58,7 @@ $vehiculosActivos = $db->query("
     SELECT id, referencia, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado, publico, notas, fecha_compra
     FROM vehiculos
     WHERE estado IN ('en_estudio', 'en_preparacion', 'en_venta', 'reservado')
-    ORDER BY created_at DESC
+    ORDER BY fecha_compra DESC, created_at DESC
 ")->fetchAll();
 
 // Obtener fotos adicionales de cada vehículo

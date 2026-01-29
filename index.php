@@ -145,14 +145,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         <div class="container">
             <div class="stats-grid">
                 <div class="stat-card">
+                    <h3>Inversión Actual</h3>
+                    <div class="value"><?php echo formatMoney($stats['inversion_actual']); ?></div>
+                    <div class="label">Valor en Bienes</div>
+                </div>
+                <div class="stat-card">
                     <h3>Capital</h3>
                     <div class="value"><?php echo formatMoney($stats['fondos_disponibles']); ?></div>
                     <div class="label">Fondos Disponibles</div>
-                </div>
-                <div class="stat-card">
-                    <h3>Inversión Actual</h3>
-                    <div class="value"><?php echo formatMoney($stats['inversion_actual']); ?></div>
-                    <div class="label">Compra + Gastos Vehículos</div>
                 </div>
                 <div class="stat-card">
                     <h3>Clientes Actuales</h3>
