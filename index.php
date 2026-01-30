@@ -73,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     <li><a href="#rentabilidad-actual">Rentabilidad Actual</a></li>
                     <li><a href="#como-funciona">Cómo Funciona</a></li>
                     <li><a href="#como-invertir">Cómo Invertir</a></li>
+                    <li><a href="#quienes-somos">Quiénes Somos</a></li>
                     <li><a href="#contacto">Contacto</a></li>
                     <li><a href="cliente/login.php">Acceso Clientes</a></li>
                 </ul>
@@ -173,23 +174,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         <div class="container">
             <div class="section-title">
                 <h2>Rentabilidad Actual</h2>
-                <p>Dos opciones de inversión adaptadas a tus necesidades</p>
+                <p>Garantizada por bienes raíces</p>
             </div>
-            <div class="stats-grid">
+            <div class="stats-grid" style="grid-template-columns: 1fr; max-width: 500px; margin: 0 auto;">
                 <div class="stat-card">
                     <h3>Rentabilidad Fija</h3>
                     <div class="value"><?php echo formatPercent(floatval(getConfig('rentabilidad_fija', 5))); ?></div>
-                    <div class="label">Mensual Garantizado</div>
+                    <div class="label">Anual Garantizado</div>
                     <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
                         Ideal para inversores conservadores que buscan estabilidad y seguridad en sus inversiones.
-                    </p>
-                </div>
-                <div class="stat-card">
-                    <h3>Rentabilidad Variable</h3>
-                    <div class="value"><?php echo formatPercent($stats['rentabilidad_actual']); ?></div>
-                    <div class="label">Rendimiento Actual</div>
-                    <p style="margin-top: 15px; color: var(--text-muted); font-size: 0.9rem;">
-                        Para inversores que buscan maximizar beneficios con el rendimiento real de las operaciones.
                     </p>
                 </div>
             </div>
@@ -215,11 +208,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     <div class="explanation-icon-img">
                         <img src="assets/images/fondo-2.jpg" alt="Monitores de inversión">
                     </div>
-                    <h3>Elige Tu Modalidad de Rentabilidad</h3>
-                    <p>Al depositar tu capital, decides cómo quieres que trabaje tu dinero:</p>
+                    <h3>Una Modalidad de Rentabilidad</h3>
+                    <p>Tu capital está garantizado y tu rentabilidad también.</p>
                     <ul class="explanation-list">
-                        <li><strong>Rentabilidad Fija:</strong> Inversión 100% garantizada con un mínimo del 10% anual. Ideal si prefieres seguridad y estabilidad. Consulta la rentabilidad actual en nuestro panel.</li>
-                        <li><strong>Rentabilidad Variable:</strong> Participas directamente en los beneficios de la venta de vehículos. Mayor potencial de ganancia, aunque no está garantizada. Consulta el rendimiento medio actual.</li>
+                        <li><strong>Rentabilidad Fija:</strong> Inversión 100% garantizada con un 10% anual. Ideal para inversores que buscan seguridad y estabilidad con un buen rendimiento.</li>
                     </ul>
                 </div>
                 <div class="explanation-block">
@@ -249,7 +241,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                 <div class="step">
                     <div class="step-number">2</div>
                     <h3>Elige tu Inversión</h3>
-                    <p>Selecciona entre rentabilidad fija o variable según tu perfil de inversor.</p>
+                    <p>Selecciona entre rentabilidad fija o variable según tu perfil de inversor. <em style="color: var(--gold);">(Opción no disponible actualmente)</em></p>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>
@@ -260,6 +252,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     <div class="step-number">4</div>
                     <h3>Recibe Rentabilidad</h3>
                     <p>Observa cómo crece tu inversión y recibe beneficios periódicamente.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quienes Somos Section -->
+    <section class="how-it-works" id="quienes-somos">
+        <div class="container">
+            <div class="section-title">
+                <h2>Quiénes Somos</h2>
+                <p>Información sobre nuestra empresa</p>
+            </div>
+            <div class="explanation-content" style="grid-template-columns: 1fr; max-width: 600px; margin: 0 auto;">
+                <div class="explanation-block" style="text-align: center;">
+                    <h3 style="margin-bottom: 25px;">Rentocio, SLU</h3>
+                    <p style="font-size: 1rem; line-height: 1.8;">
+                        <strong>CIF:</strong> B-32.476.863<br><br>
+                        <strong>Dirección:</strong><br>
+                        Calle 9 Nave 23 C<br>
+                        Polígono Industrial San Cibrao<br>
+                        32.901 - San Ciprián de Viñas<br><br>
+                        <strong>Teléfono:</strong> <a href="tel:604005393" style="color: var(--gold);">604 00 53 93</a>
+                    </p>
                 </div>
             </div>
         </div>
