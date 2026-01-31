@@ -740,23 +740,23 @@ $ultimosClientes = $db->query("
                 </div>
             </div>
 
-            <!-- Gráfico de Rentabilidad Media por Semana -->
-            <div class="card" style="margin-bottom: 25px;">
-                <div class="card-header">
-                    <h2>Rentabilidad Media por Semana</h2>
-                    <span style="color: var(--text-muted); font-size: 0.85rem;">Últimas 9 semanas</span>
-                </div>
-                <div class="card-body">
-                    <div class="chart-container">
-                        <canvas id="rentabilidadChart"></canvas>
-                    </div>
-                </div>
-            </div>
-
             <!-- Layout principal -->
             <div class="dashboard-layout" style="grid-template-columns: 1fr 300px;">
                 <!-- Columna Principal -->
                 <div class="dashboard-main">
+                    <!-- Gráfico de Rentabilidad Media por Semana -->
+                    <div class="card" style="margin-bottom: 25px;">
+                        <div class="card-header">
+                            <h2>Rentabilidad Media por Semana</h2>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Últimas 9 semanas</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <canvas id="rentabilidadChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Tabla de Clientes -->
                     <div class="section-title">Clientes</div>
                     <div class="card">
@@ -777,7 +777,8 @@ $ultimosClientes = $db->query("
                                     <?php if (empty($ultimosClientes)): ?>
                                     <tr>
                                         <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                                            No hay clientes registrados
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 48px; height: 48px; margin-bottom: 10px; opacity: 0.5;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                            <br>No hay clientes registrados
                                         </td>
                                     </tr>
                                     <?php else: ?>
@@ -830,7 +831,8 @@ $ultimosClientes = $db->query("
                     </div>
                     <?php if (empty($vehiculosActivos)): ?>
                         <div class="card" style="padding: 40px; text-align: center; color: var(--text-muted);">
-                            No hay vehículos activos
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 48px; height: 48px; margin-bottom: 10px; opacity: 0.5;"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C19.1 10.7 19 10 19 10l-2-4H7L5 10s-.1.7-1.5 1.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+                            <br>No hay vehículos activos
                         </div>
                     <?php else: ?>
                         <div class="vehicle-grid">
@@ -1159,7 +1161,7 @@ $ultimosClientes = $db->query("
                 labels: <?php echo json_encode(array_column($semanasGrafico, 'label')); ?>,
                 datasets: [
                     {
-                        label: 'Rentabilidad Fija',
+                        label: 'Fija',
                         data: <?php echo json_encode(array_column($semanasGrafico, 'fija')); ?>,
                         borderColor: '#3b82f6',
                         backgroundColor: 'rgba(59, 130, 246, 0.1)',
@@ -1173,7 +1175,7 @@ $ultimosClientes = $db->query("
                         pointHoverRadius: 6
                     },
                     {
-                        label: 'Rentabilidad Variable',
+                        label: 'VariableObtenida',
                         data: <?php echo json_encode(array_column($semanasGrafico, 'variable')); ?>,
                         borderColor: '#22c55e',
                         backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -1187,15 +1189,15 @@ $ultimosClientes = $db->query("
                         pointHoverRadius: 6
                     },
                     {
-                        label: 'Rent. Variable Prevista',
+                        label: 'VariablePrevista',
                         data: <?php echo json_encode(array_column($semanasGrafico, 'variablePrevista')); ?>,
-                        borderColor: '#f59e0b',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderColor: '#ec4899',
+                        backgroundColor: 'rgba(236, 72, 153, 0.1)',
                         borderWidth: 2,
                         borderDash: [5, 5],
                         fill: false,
                         tension: 0.4,
-                        pointBackgroundColor: '#f59e0b',
+                        pointBackgroundColor: '#ec4899',
                         pointBorderColor: '#000',
                         pointBorderWidth: 1,
                         pointRadius: 3,
@@ -1204,12 +1206,12 @@ $ultimosClientes = $db->query("
                     {
                         label: 'Media',
                         data: <?php echo json_encode(array_column($semanasGrafico, 'media')); ?>,
-                        borderColor: '#d4a84b',
-                        backgroundColor: 'rgba(212, 168, 75, 0.15)',
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.15)',
                         borderWidth: 3,
                         fill: true,
                         tension: 0.4,
-                        pointBackgroundColor: '#d4a84b',
+                        pointBackgroundColor: '#f59e0b',
                         pointBorderColor: '#000',
                         pointBorderWidth: 2,
                         pointRadius: 5,
