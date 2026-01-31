@@ -60,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Por favor, completa todos los campos.';
         } elseif (!validarDNI($dni)) {
             $error = 'El DNI/NIE no es válido.';
-        } elseif (!in_array($tipo_inversion, ['fija', 'variable'])) {
+        } elseif ($tipo_inversion !== 'fija') {
             $error = 'Tipo de inversión no válido.';
         } elseif ($capital < 1000) {
             $error = 'El capital mínimo de inversión es de 1.000€.';
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($stmt->fetch()) {
                     $error = 'Este DNI ya está registrado con otra cuenta.';
                 } else {
-                    // Actualizar cliente
+                    // Actualizar cliente - activo = 0 hasta activación manual del admin
                     $stmt = $db->prepare("
                         UPDATE clientes SET
                             dni = ?,
@@ -82,15 +82,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             provincia = ?,
                             pais = ?,
                             telefono = ?,
-                            capital_invertido = ?,
-                            tipo_inversion = ?,
-                            registro_completo = 1
+                            capital_total = ?,
+                            registro_completo = 1,
+                            activo = 0
                         WHERE id = ?
                     ");
                     $stmt->execute([
                         $dni, $direccion, $codigo_postal, $poblacion, $provincia,
-                        $pais, $telefono, $capital, $tipo_inversion, $clienteId
+                        $pais, $telefono, $capital, $clienteId
                     ]);
+
+                    // Crear registro de capital inicial con tipo fija
+                    $stmtCapital = $db->prepare("
+                        INSERT INTO capital (fecha_ingreso, cliente_id, importe_ingresado, tipo_inversion, activo, notas)
+                        VALUES (CURDATE(), ?, ?, 'fija', 1, 'Capital inicial de registro')
+                    ");
+                    $stmtCapital->execute([$clienteId, $capital]);
 
                     // Limpiar sesión de verificación
                     unset($_SESSION['verificacion_cliente_id']);
@@ -230,9 +237,10 @@ $provincias = [
                     <div class="success-icon">✓</div>
                     <h2>¡Registro Completado!</h2>
                     <p style="color: var(--text-muted); margin: 20px 0;">
-                        Tu cuenta está lista. Ya puedes acceder a tu panel de inversor.
+                        Tu solicitud ha sido recibida. Un administrador revisará y activará tu cuenta en breve.
+                        Te notificaremos cuando puedas acceder a tu panel de inversor.
                     </p>
-                    <a href="panel.php" class="btn btn-primary" style="width: 100%;">Ir a mi Panel</a>
+                    <a href="../index.php" class="btn btn-primary" style="width: 100%;">Volver al Inicio</a>
                 </div>
             <?php else: ?>
                 <?php if ($error): ?>
@@ -320,20 +328,12 @@ $provincias = [
 
                     <div class="form-group">
                         <label>Tipo de inversión *</label>
-                        <div class="investment-options">
-                            <label class="investment-option <?php echo (($_POST['tipo_inversion'] ?? '') === 'fija') ? 'selected' : ''; ?>">
-                                <input type="radio" name="tipo_inversion" value="fija"
-                                    <?php echo (($_POST['tipo_inversion'] ?? '') === 'fija') ? 'checked' : ''; ?>>
+                        <div class="investment-options" style="grid-template-columns: 1fr;">
+                            <label class="investment-option selected">
+                                <input type="radio" name="tipo_inversion" value="fija" checked>
                                 <h4>Rentabilidad Fija</h4>
                                 <div class="rate"><?php echo formatPercent(floatval(getConfig('rentabilidad_fija', 5))); ?></div>
-                                <p>Mensual garantizado</p>
-                            </label>
-                            <label class="investment-option <?php echo (($_POST['tipo_inversion'] ?? '') === 'variable') ? 'selected' : ''; ?>">
-                                <input type="radio" name="tipo_inversion" value="variable"
-                                    <?php echo (($_POST['tipo_inversion'] ?? '') === 'variable') ? 'checked' : ''; ?>>
-                                <h4>Rentabilidad Variable</h4>
-                                <div class="rate"><?php echo formatPercent(floatval(getConfig('rentabilidad_variable_actual', 14.8))); ?></div>
-                                <p>Rendimiento actual</p>
+                                <p>Anual garantizado</p>
                             </label>
                         </div>
                     </div>
