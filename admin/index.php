@@ -124,6 +124,69 @@ $valorBienes = $db->query("
 ")->fetch();
 $valorBienesTotal = floatval($valorBienes['total']);
 
+// Calcular inversión total en vehículos activos para % rentabilidad prevista
+$inversionVehiculosActivos = $db->query("
+    SELECT COALESCE(SUM(precio_compra + prevision_gastos), 0) as total
+    FROM vehiculos
+    WHERE estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
+")->fetch();
+$inversionActivosTotal = floatval($inversionVehiculosActivos['total']);
+$porcentajeRentabilidadPrevista = $inversionActivosTotal > 0 ? ($rentabilidadPrevistaTotal / $inversionActivosTotal) * 100 : 0;
+
+// Calcular inversión total en vehículos vendidos para % rentabilidad obtenida
+$inversionVehiculosVendidos = $db->query("
+    SELECT COALESCE(SUM(precio_compra + gastos), 0) as total
+    FROM vehiculos
+    WHERE estado = 'vendido' AND precio_venta_real IS NOT NULL
+")->fetch();
+$inversionVendidosTotal = floatval($inversionVehiculosVendidos['total']);
+$porcentajeRentabilidadObtenida = $inversionVendidosTotal > 0 ? ($rentabilidadObtenidaTotal / $inversionVendidosTotal) * 100 : 0;
+
+// Datos para gráfico de barras de capital (últimas 4 semanas)
+$capitalSemanal = [];
+for ($i = 3; $i >= 0; $i--) {
+    $semNum = $semanaActual - $i;
+    $anio = $anioActual;
+    if ($semNum <= 0) {
+        $semNum += 52;
+        $anio--;
+    }
+
+    // Calcular fechas de inicio y fin de la semana
+    $inicioSemana = new DateTime();
+    $inicioSemana->setISODate($anio, $semNum, 1);
+    $finSemana = clone $inicioSemana;
+    $finSemana->modify('+6 days');
+
+    $fechaInicio = $inicioSemana->format('Y-m-d');
+    $fechaFin = $finSemana->format('Y-m-d');
+
+    // Obtener entradas de capital en esa semana
+    $stmtEntrada = $db->prepare("
+        SELECT COALESCE(SUM(importe_ingresado), 0) as total
+        FROM capital
+        WHERE fecha_ingreso BETWEEN ? AND ? AND activo = 1
+    ");
+    $stmtEntrada->execute([$fechaInicio, $fechaFin]);
+    $entrada = floatval($stmtEntrada->fetch()['total']);
+
+    // Obtener salidas de capital en esa semana
+    $stmtSalida = $db->prepare("
+        SELECT COALESCE(SUM(importe_retirado), 0) as total
+        FROM capital
+        WHERE fecha_retirada BETWEEN ? AND ? AND activo = 1
+    ");
+    $stmtSalida->execute([$fechaInicio, $fechaFin]);
+    $salida = floatval($stmtSalida->fetch()['total']);
+
+    $capitalSemanal[] = [
+        'semana' => $semNum,
+        'label' => 'S' . $semNum,
+        'entrada' => $entrada,
+        'salida' => $salida
+    ];
+}
+
 // Calcular semana actual del año
 $semanaActual = (int) date('W');
 $anioActual = (int) date('Y');
@@ -174,12 +237,16 @@ for ($i = 8; $i >= 0; $i--) {
 
     $mediaRent = ($rentFija + $rentVariable) / 2;
 
+    // Rentabilidad variable prevista (usar el % calculado arriba)
+    $rentVariablePrevista = $porcentajeRentabilidadPrevista;
+
     $semanasGrafico[] = [
         'semana' => $semNum,
         'anio' => $anio,
         'label' => 'S' . $semNum,
         'fija' => $rentFija,
         'variable' => $rentVariable,
+        'variablePrevista' => $rentVariablePrevista,
         'media' => $mediaRent
     ];
 }
@@ -513,10 +580,10 @@ $ultimosClientes = $db->query("
             color: var(--green-accent);
         }
 
-        /* Gráfico de líneas - reducido */
+        /* Gráfico de líneas */
         .chart-container {
             position: relative;
-            height: 120px;
+            height: 180px;
             margin-top: 10px;
         }
 
@@ -634,10 +701,20 @@ $ultimosClientes = $db->query("
                         <div class="rent-big-icon fija">€</div>
                         <div class="rent-big-title">Rentabilidad Fija</div>
                     </div>
-                    <div class="rent-big-value fija"><?php echo formatMoney($rentabilidadGeneradaFija); ?></div>
-                    <div class="rent-big-percent">▲ <?php echo number_format($rentabilidadFija, 1, ',', '.'); ?>%</div>
-                    <div class="rent-big-capital">
-                        Capital invertido: <strong><?php echo formatMoney($capitalInvertidoFija); ?></strong>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <div class="rent-big-value fija"><?php echo formatMoney($rentabilidadGeneradaFija); ?></div>
+                            <div class="rent-big-percent">▲ <?php echo number_format($rentabilidadFija, 1, ',', '.'); ?>%</div>
+                            <div class="rent-big-capital">
+                                Capital invertido: <strong><?php echo formatMoney($capitalInvertidoFija); ?></strong>
+                            </div>
+                        </div>
+                        <div style="border-left: 1px solid var(--border-color); padding-left: 20px;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">Entrada/Salida Capital (4 sem)</div>
+                            <div style="height: 80px;">
+                                <canvas id="capitalBarChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="rent-big-card">
@@ -651,11 +728,13 @@ $ultimosClientes = $db->query("
                             <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Prevista</div>
                             <div style="font-size: 1.8rem; font-weight: 700; color: var(--warning);"><?php echo formatMoney($rentabilidadPrevistaTotal); ?></div>
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Vehículos activos (no vendidos)</div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: var(--warning); margin-top: 4px;"><?php echo number_format($porcentajeRentabilidadPrevista, 1, ',', '.'); ?>%</div>
                         </div>
                         <div>
                             <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Obtenida</div>
                             <div style="font-size: 1.8rem; font-weight: 700; color: var(--green-accent);"><?php echo formatMoney($rentabilidadObtenidaTotal); ?></div>
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Vehículos vendidos</div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: var(--green-accent); margin-top: 4px;"><?php echo number_format($porcentajeRentabilidadObtenida, 1, ',', '.'); ?>%</div>
                         </div>
                     </div>
                 </div>
@@ -930,10 +1009,7 @@ $ultimosClientes = $db->query("
                         </div>
                         <div class="stat-panel-value"><?php echo formatMoney($capitalInvertidoVehiculos + $capitalReserva); ?></div>
                         <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px;">
-                            <div class="stat-panel-row">
-                                <span class="stat-panel-label" style="color: var(--blue-accent);">Valor de Bienes</span>
-                                <span class="stat-panel-amount" style="color: var(--blue-accent); font-weight: 700;"><?php echo formatMoney($valorBienesTotal); ?></span>
-                            </div>
+                            <div class="stat-panel-value" style="font-size: 1.6rem; color: var(--blue-accent);"><?php echo formatMoney($valorBienesTotal); ?></div>
                         </div>
 
                         <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Por tipo de inversión</div>
@@ -1025,6 +1101,56 @@ $ultimosClientes = $db->query("
             });
         });
 
+        // Gráfico de barras de capital (entrada/salida)
+        const ctxBar = document.getElementById('capitalBarChart').getContext('2d');
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode(array_column($capitalSemanal, 'label')); ?>,
+                datasets: [
+                    {
+                        label: 'Entrada',
+                        data: <?php echo json_encode(array_column($capitalSemanal, 'entrada')); ?>,
+                        backgroundColor: '#22c55e',
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Salida',
+                        data: <?php echo json_encode(array_column($capitalSemanal, 'salida')); ?>,
+                        backgroundColor: '#ef4444',
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#888', font: { size: 9 } }
+                    },
+                    y: {
+                        display: false,
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
         // Gráfico de Rentabilidad Media por Semana
         const ctx = document.getElementById('rentabilidadChart').getContext('2d');
         new Chart(ctx, {
@@ -1061,6 +1187,21 @@ $ultimosClientes = $db->query("
                         pointHoverRadius: 6
                     },
                     {
+                        label: 'Rent. Variable Prevista',
+                        data: <?php echo json_encode(array_column($semanasGrafico, 'variablePrevista')); ?>,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.4,
+                        pointBackgroundColor: '#f59e0b',
+                        pointBorderColor: '#000',
+                        pointBorderWidth: 1,
+                        pointRadius: 3,
+                        pointHoverRadius: 5
+                    },
+                    {
                         label: 'Media',
                         data: <?php echo json_encode(array_column($semanasGrafico, 'media')); ?>,
                         borderColor: '#d4a84b',
@@ -1090,8 +1231,8 @@ $ultimosClientes = $db->query("
                         labels: {
                             color: '#888',
                             usePointStyle: true,
-                            padding: 20,
-                            font: { size: 11 }
+                            padding: 15,
+                            font: { size: 10 }
                         }
                     },
                     tooltip: {
@@ -1120,7 +1261,7 @@ $ultimosClientes = $db->query("
                     },
                     y: {
                         beginAtZero: true,
-                        max: 20,
+                        max: 25,
                         grid: {
                             color: 'rgba(255, 255, 255, 0.05)'
                         },
