@@ -6,9 +6,13 @@
  * Uso: php generar_historico.php
  */
 
-// Prevenir ejecución desde navegador (excepto si se define la constante)
-if (php_sapi_name() !== 'cli' && !defined('INVERCAR_CRON')) {
-    die('Este script solo puede ejecutarse desde CLI');
+// Clave secreta para ejecución desde navegador (BORRAR ESTE ARCHIVO DESPUÉS DE USAR)
+$claveSecreta = 'InverCar2026Gen';
+if (php_sapi_name() !== 'cli') {
+    if (!isset($_GET['clave']) || $_GET['clave'] !== $claveSecreta) {
+        die('Acceso denegado. Usa: ?clave=' . $claveSecreta);
+    }
+    echo "<pre>"; // Para mostrar formato en navegador
 }
 
 require_once __DIR__ . '/../includes/init.php';
