@@ -131,7 +131,10 @@ $inversionVehiculosActivos = $db->query("
     WHERE estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
 ")->fetch();
 $inversionActivosTotal = floatval($inversionVehiculosActivos['total']);
-$porcentajeRentabilidadPrevista = $inversionActivosTotal > 0 ? ($rentabilidadPrevistaTotal / $inversionActivosTotal) * 100 : 0;
+// Si hay inversión en vehículos activos, calcular %; sino usar el valor configurado de variable actual
+$porcentajeRentabilidadPrevista = $inversionActivosTotal > 0
+    ? ($rentabilidadPrevistaTotal / $inversionActivosTotal) * 100
+    : $rentabilidadVariableActual; // Usar el valor configurado como fallback
 
 // Calcular inversión total en vehículos vendidos para % rentabilidad obtenida
 $inversionVehiculosVendidos = $db->query("

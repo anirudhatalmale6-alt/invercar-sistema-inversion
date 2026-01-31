@@ -187,11 +187,11 @@ $filtro = cleanInput($_GET['filtro'] ?? '');
 $vista = cleanInput($_GET['vista'] ?? 'completos');
 
 if ($vista === 'pendientes') {
-    // Registros incompletos (solo email/nombre inicial)
-    $sql = "SELECT id, nombre, apellidos, email, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, activo, registro_completo, email_verificado, capital_previsto, created_at FROM clientes WHERE registro_completo = 0";
+    // Registros incompletos O inactivos
+    $sql = "SELECT id, nombre, apellidos, email, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, activo, registro_completo, email_verificado, capital_previsto, created_at FROM clientes WHERE registro_completo = 0 OR activo = 0";
 } else {
-    // Clientes con registro completo
-    $sql = "SELECT id, nombre, apellidos, email, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, activo, registro_completo, email_verificado, capital_previsto, created_at FROM clientes WHERE registro_completo = 1";
+    // Clientes con registro completo Y activos
+    $sql = "SELECT id, nombre, apellidos, email, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, activo, registro_completo, email_verificado, capital_previsto, created_at FROM clientes WHERE registro_completo = 1 AND activo = 1";
 }
 $params = [];
 
@@ -205,8 +205,8 @@ $stmt = $db->prepare($sql);
 $stmt->execute($params);
 $clientes = $stmt->fetchAll();
 
-// Contar registros pendientes
-$pendientesCount = $db->query("SELECT COUNT(*) as total FROM clientes WHERE registro_completo = 0")->fetch()['total'];
+// Contar registros pendientes (incompletos O inactivos)
+$pendientesCount = $db->query("SELECT COUNT(*) as total FROM clientes WHERE registro_completo = 0 OR activo = 0")->fetch()['total'];
 
 // Cliente a editar
 $clienteEditar = null;

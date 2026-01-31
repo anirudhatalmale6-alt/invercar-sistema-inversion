@@ -100,6 +100,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['cliente_id'] = $clienteId;
                     $_SESSION['cliente_nombre'] = $cliente['nombre'] . ' ' . $cliente['apellidos'];
 
+                    // Enviar notificación al panel de mensajes (contactos)
+                    $nombreCompleto = $cliente['nombre'] . ' ' . $cliente['apellidos'];
+                    $mensajeNotificacion = "Nuevo cliente registrado:\n\nNombre: {$nombreCompleto}\nEmail: {$cliente['email']}\nCapital previsto: " . number_format($capital, 0, ',', '.') . " €\n\nEl cliente ha completado el proceso de registro y está pendiente de activación.";
+
+                    $stmtContacto = $db->prepare("
+                        INSERT INTO contactos (nombre, email, telefono, mensaje, leido, created_at)
+                        VALUES (?, ?, ?, ?, 0, NOW())
+                    ");
+                    $stmtContacto->execute([
+                        $nombreCompleto,
+                        $cliente['email'],
+                        $telefono,
+                        $mensajeNotificacion
+                    ]);
+
+                    // Enviar email al administrador
+                    require_once __DIR__ . '/../includes/mail.php';
+                    enviarEmailAdminNuevoCliente($nombreCompleto, $cliente['email'], $capital);
+
                     $exito = true;
                 }
             } catch (Exception $e) {

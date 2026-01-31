@@ -50,6 +50,53 @@ $rentabilidadMap = [];
 foreach ($rentabilidad as $r) {
     $rentabilidadMap[$r['semana']] = $r;
 }
+
+// Obtener vehículos activos (públicos para clientes)
+$vehiculosActivos = $db->query("
+    SELECT v.id, v.referencia, v.marca, v.modelo, v.version, v.anio, v.kilometros,
+           v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra,
+           v.proveedor_id
+    FROM vehiculos v
+    WHERE v.estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
+    AND v.publico = 1
+    ORDER BY v.fecha_compra DESC, v.created_at DESC
+")->fetchAll();
+
+// Obtener fotos adicionales de cada vehículo
+$fotosPorVehiculo = [];
+if (!empty($vehiculosActivos)) {
+    $vehiculoIds = array_column($vehiculosActivos, 'id');
+    $placeholders = implode(',', array_fill(0, count($vehiculoIds), '?'));
+    $stmtFotos = $db->prepare("SELECT vehiculo_id, foto FROM vehiculo_fotos WHERE vehiculo_id IN ($placeholders) ORDER BY vehiculo_id, orden");
+    $stmtFotos->execute($vehiculoIds);
+    foreach ($stmtFotos->fetchAll() as $f) {
+        $fotosPorVehiculo[$f['vehiculo_id']][] = $f['foto'];
+    }
+}
+
+// Calcular media de días de venta por proveedor
+$mediaVentaProveedor = [];
+$stmtMedia = $db->query("
+    SELECT proveedor_id,
+           AVG(DATEDIFF(fecha_venta, fecha_compra)) as media_dias
+    FROM vehiculos
+    WHERE estado = 'vendido'
+    AND fecha_venta IS NOT NULL
+    AND fecha_compra IS NOT NULL
+    AND proveedor_id IS NOT NULL
+    GROUP BY proveedor_id
+");
+foreach ($stmtMedia->fetchAll() as $m) {
+    $mediaVentaProveedor[$m['proveedor_id']] = round($m['media_dias']);
+}
+
+// Estados y fases del vehículo
+$estadoFases = [
+    'en_espera' => ['orden' => 1, 'nombre' => 'Espera', 'color' => '#d946ef'],
+    'en_preparacion' => ['orden' => 2, 'nombre' => 'Preparación', 'color' => '#eab308'],
+    'en_venta' => ['orden' => 3, 'nombre' => 'En Venta', 'color' => '#8b5cf6'],
+    'reservado' => ['orden' => 4, 'nombre' => 'Reservado', 'color' => '#1f2937']
+];
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -252,9 +299,265 @@ foreach ($rentabilidad as $r) {
             margin-top: 5px;
         }
 
+        /* Vehicle cards */
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--primary-color);
+            border-radius: 2px;
+        }
+
+        .vehicle-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .vehicle-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+        }
+
+        .vehicle-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(212, 168, 75, 0.1);
+        }
+
+        .vehicle-card-status {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            z-index: 2;
+        }
+
+        .vehicle-card-image {
+            width: 100%;
+            height: 180px;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .vehicle-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
+
+        .vehicle-card-image .no-image {
+            color: var(--text-muted);
+            font-size: 2rem;
+        }
+
+        .vehicle-photo-gallery {
+            display: flex;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+            height: 100%;
+        }
+
+        .vehicle-photo-gallery::-webkit-scrollbar { display: none; }
+
+        .vehicle-photo-gallery img {
+            flex: 0 0 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .vehicle-photo-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            cursor: pointer;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .vehicle-card:hover .vehicle-photo-nav { opacity: 1; }
+
+        .vehicle-photo-nav.prev { left: 5px; }
+        .vehicle-photo-nav.next { right: 5px; }
+
+        .vehicle-photo-dots {
+            position: absolute;
+            bottom: 6px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            z-index: 3;
+        }
+
+        .vehicle-photo-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            transition: background 0.2s;
+        }
+
+        .vehicle-photo-dot.active { background: var(--primary-color); }
+
+        .vehicle-card-body {
+            padding: 15px;
+        }
+
+        .vehicle-card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--text-light);
+        }
+
+        .vehicle-card-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+        }
+
+        .vehicle-card-prices {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .vehicle-price-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .vehicle-price-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .vehicle-price-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .vehicle-price-value.venta { color: var(--success); }
+
+        /* Phase timeline */
+        .phase-timeline {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .phase-timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .phase-timeline-days {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .phase-timeline-expected {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .phase-bar-container {
+            height: 24px;
+            background: rgba(255,255,255,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phase-bar-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+            transition: width 0.3s ease;
+        }
+
+        .phase-bar-warning {
+            background: linear-gradient(90deg, #f59e0b, #d97706);
+        }
+
+        .phase-bar-danger {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        .phase-markers {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .phase-marker {
+            text-align: center;
+            flex: 1;
+        }
+
+        .phase-marker-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin: 0 auto 4px;
+        }
+
+        .phase-marker-dot.active {
+            box-shadow: 0 0 0 3px rgba(212, 168, 75, 0.3);
+        }
+
+        .phase-marker-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+        }
+
         @media (max-width: 768px) {
             .chart-container {
                 overflow-x: auto;
+            }
+            .vehicle-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -310,6 +613,132 @@ foreach ($rentabilidad as $r) {
                     <div class="label">Valor total actual</div>
                 </div>
             </div>
+
+            <!-- Vehículos en Activo -->
+            <?php if (!empty($vehiculosActivos)): ?>
+            <div class="section-title">Vehículos en Cartera</div>
+            <div class="vehicle-grid">
+                <?php foreach ($vehiculosActivos as $vehiculo):
+                    // Calcular días desde la fecha de compra
+                    $diasDesdeCompra = 0;
+                    if (!empty($vehiculo['fecha_compra'])) {
+                        $fechaCompra = new DateTime($vehiculo['fecha_compra']);
+                        $hoy = new DateTime();
+                        $diasDesdeCompra = $hoy->diff($fechaCompra)->days;
+                    }
+
+                    // Calcular fecha prevista de venta
+                    $diasPrevistos = 75; // Por defecto
+                    if (!empty($vehiculo['proveedor_id']) && isset($mediaVentaProveedor[$vehiculo['proveedor_id']])) {
+                        $diasPrevistos = $mediaVentaProveedor[$vehiculo['proveedor_id']];
+                    }
+
+                    $fechaPrevista = null;
+                    if (!empty($vehiculo['fecha_compra'])) {
+                        $fechaPrevista = (new DateTime($vehiculo['fecha_compra']))->modify("+{$diasPrevistos} days");
+                    }
+
+                    // Porcentaje de progreso
+                    $porcentajeProgreso = min(100, ($diasDesdeCompra / $diasPrevistos) * 100);
+                    $barClass = '';
+                    if ($porcentajeProgreso > 100) {
+                        $barClass = 'phase-bar-danger';
+                    } elseif ($porcentajeProgreso > 75) {
+                        $barClass = 'phase-bar-warning';
+                    }
+
+                    // Estado actual
+                    $estadoActual = $vehiculo['estado'];
+                    $estadoInfo = $estadoFases[$estadoActual] ?? ['orden' => 0, 'nombre' => ucfirst(str_replace('_', ' ', $estadoActual)), 'color' => '#6b7280'];
+
+                    // Collect all photos
+                    $todasFotos = [];
+                    if ($vehiculo['foto']) {
+                        $todasFotos[] = $vehiculo['foto'];
+                    }
+                    if (isset($fotosPorVehiculo[$vehiculo['id']])) {
+                        $todasFotos = array_merge($todasFotos, $fotosPorVehiculo[$vehiculo['id']]);
+                    }
+                    $vehiculoGalleryId = 'gallery-' . $vehiculo['id'];
+                ?>
+                <div class="vehicle-card">
+                    <div class="vehicle-card-status" style="background: <?php echo $estadoInfo['color']; ?>; color: #fff;">
+                        <?php echo $estadoInfo['nombre']; ?>
+                    </div>
+                    <div class="vehicle-card-image">
+                        <?php if (!empty($todasFotos)): ?>
+                            <?php if (count($todasFotos) > 1): ?>
+                                <button class="vehicle-photo-nav prev" onclick="scrollGallery('<?php echo $vehiculoGalleryId; ?>', -1)">&#8249;</button>
+                                <button class="vehicle-photo-nav next" onclick="scrollGallery('<?php echo $vehiculoGalleryId; ?>', 1)">&#8250;</button>
+                                <div class="vehicle-photo-dots">
+                                    <?php for ($i = 0; $i < count($todasFotos); $i++): ?>
+                                        <span class="vehicle-photo-dot <?php echo $i === 0 ? 'active' : ''; ?>" data-index="<?php echo $i; ?>"></span>
+                                    <?php endfor; ?>
+                                </div>
+                                <div class="vehicle-photo-gallery" id="<?php echo $vehiculoGalleryId; ?>" data-count="<?php echo count($todasFotos); ?>">
+                                    <?php foreach ($todasFotos as $foto): ?>
+                                        <img src="../<?php echo escape($foto); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php else: ?>
+                                <img src="../<?php echo escape($todasFotos[0]); ?>" alt="<?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
+                            <?php endif; ?>
+                        <?php else: ?>
+                            <span class="no-image">&#128663;</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="vehicle-card-body">
+                        <div class="vehicle-card-title"><?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?></div>
+                        <div class="vehicle-card-subtitle">
+                            <?php echo escape($vehiculo['version'] ?? ''); ?> · <?php echo escape($vehiculo['anio']); ?>
+                            <?php if ($vehiculo['kilometros']): ?>
+                                · <?php echo number_format($vehiculo['kilometros'], 0, ',', '.'); ?> km
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="vehicle-card-prices">
+                            <div class="vehicle-price-item">
+                                <div class="vehicle-price-label">Venta Prevista</div>
+                                <div class="vehicle-price-value venta"><?php echo formatMoney($vehiculo['valor_venta_previsto']); ?></div>
+                            </div>
+                            <div class="vehicle-price-item">
+                                <div class="vehicle-price-label">Fecha Prevista</div>
+                                <div class="vehicle-price-value" style="color: var(--text-light);">
+                                    <?php echo $fechaPrevista ? $fechaPrevista->format('d/m/Y') : '-'; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Phase Timeline -->
+                        <div class="phase-timeline">
+                            <div class="phase-timeline-header">
+                                <div class="phase-timeline-days">
+                                    <span style="color: <?php echo $diasDesdeCompra > $diasPrevistos ? 'var(--danger)' : 'var(--success)'; ?>;">
+                                        <?php echo $diasDesdeCompra; ?> días
+                                    </span>
+                                </div>
+                                <div class="phase-timeline-expected">
+                                    Previsto: <?php echo $diasPrevistos; ?> días
+                                </div>
+                            </div>
+                            <div class="phase-bar-container">
+                                <div class="phase-bar-progress <?php echo $barClass; ?>" style="width: <?php echo min(100, $porcentajeProgreso); ?>%;"></div>
+                            </div>
+                            <div class="phase-markers">
+                                <?php foreach ($estadoFases as $key => $fase): ?>
+                                <div class="phase-marker">
+                                    <div class="phase-marker-dot <?php echo $estadoActual === $key ? 'active' : ''; ?>"
+                                         style="background: <?php echo $fase['color']; ?>;"></div>
+                                    <div class="phase-marker-label"><?php echo $fase['nombre']; ?></div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
 
             <!-- Chart Section -->
             <div class="chart-section">
@@ -385,5 +814,42 @@ foreach ($rentabilidad as $r) {
             <p>&copy; <?php echo date('Y'); ?> InverCar. Todos los derechos reservados.</p>
         </div>
     </footer>
+
+    <script>
+        // Photo gallery navigation
+        function scrollGallery(galleryId, direction) {
+            var gallery = document.getElementById(galleryId);
+            var imageWidth = gallery.offsetWidth;
+            var count = parseInt(gallery.dataset.count);
+            var currentScroll = gallery.scrollLeft;
+            var currentIndex = Math.round(currentScroll / imageWidth);
+            var newIndex = currentIndex + direction;
+
+            if (newIndex < 0) newIndex = count - 1;
+            if (newIndex >= count) newIndex = 0;
+
+            gallery.scrollTo({ left: newIndex * imageWidth, behavior: 'smooth' });
+
+            // Update dots
+            var card = gallery.closest('.vehicle-card');
+            var dots = card.querySelectorAll('.vehicle-photo-dot');
+            dots.forEach(function(dot, i) {
+                dot.classList.toggle('active', i === newIndex);
+            });
+        }
+
+        // Update dots on scroll
+        document.querySelectorAll('.vehicle-photo-gallery').forEach(function(gallery) {
+            gallery.addEventListener('scroll', function() {
+                var imageWidth = gallery.offsetWidth;
+                var currentIndex = Math.round(gallery.scrollLeft / imageWidth);
+                var card = gallery.closest('.vehicle-card');
+                var dots = card.querySelectorAll('.vehicle-photo-dot');
+                dots.forEach(function(dot, i) {
+                    dot.classList.toggle('active', i === currentIndex);
+                });
+            });
+        });
+    </script>
 </body>
 </html>

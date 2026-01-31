@@ -27,6 +27,28 @@ function enviarEmailVerificacion($email, $nombre, $token) {
 }
 
 /**
+ * Enviar email de notificación al administrador
+ */
+function enviarEmailAdminNuevoCliente($nombreCliente, $emailCliente, $capital) {
+    $emailAdmin = SMTP_FROM; // El admin recibe emails en el mismo email de envío
+
+    $asunto = "Nuevo cliente registrado en InverCar";
+
+    $mensaje = getEmailTemplate('Administrador',
+        "Se ha registrado un nuevo cliente en InverCar que está pendiente de activación:<br><br>
+        <strong>Nombre:</strong> {$nombreCliente}<br>
+        <strong>Email:</strong> {$emailCliente}<br>
+        <strong>Capital previsto:</strong> " . number_format($capital, 0, ',', '.') . " €<br><br>
+        El cliente ya ha completado el proceso de registro y está esperando que lo actives desde el panel de administración.",
+        SITE_URL . "/admin/clientes.php",
+        "Ver en Panel Admin",
+        "Este es un mensaje automático del sistema InverCar."
+    );
+
+    return enviarEmail($emailAdmin, $asunto, $mensaje);
+}
+
+/**
  * Enviar email de recuperación de contraseña
  */
 function enviarEmailRecuperacion($email, $nombre, $token) {
@@ -48,31 +70,34 @@ function enviarEmailRecuperacion($email, $nombre, $token) {
  * Template HTML para emails
  */
 function getEmailTemplate($nombre, $texto, $enlace, $botonTexto, $textoFinal) {
+    $logoUrl = SITE_URL . '/assets/images/logo-invercar.png';
     return "
     <html>
     <head>
         <style>
-            body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 0; padding: 40px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .logo { font-size: 28px; font-weight: bold; color: #1a2332; }
-            .logo span { color: #0d9b5c; }
-            .btn { display: inline-block; background: #0d9b5c; color: white; padding: 15px 30px; text-decoration: none; border-radius: 0; font-weight: bold; }
-            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+            body { font-family: 'Raleway', Arial, sans-serif; background-color: #1a1a2e; padding: 20px; margin: 0; }
+            .container { max-width: 600px; margin: 0 auto; background: #16213e; border-radius: 0; padding: 40px; border: 1px solid #d4a84b; }
+            .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(212, 168, 75, 0.3); }
+            .header img { max-width: 200px; height: auto; }
+            p { color: #e0e0e0; line-height: 1.6; }
+            .btn { display: inline-block; background: linear-gradient(135deg, #d4a84b 0%, #c9a227 100%); color: #1a1a2e !important; padding: 15px 30px; text-decoration: none; border-radius: 0; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+            .btn:hover { background: linear-gradient(135deg, #c9a227 0%, #d4a84b 100%); }
+            .link { color: #d4a84b; }
+            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(212, 168, 75, 0.3); color: #888; font-size: 12px; }
         </style>
     </head>
     <body>
         <div class='container'>
             <div class='header'>
-                <div class='logo'>Inver<span>Car</span></div>
+                <img src='{$logoUrl}' alt='InverCar' />
             </div>
-            <p>Hola <strong>{$nombre}</strong>,</p>
+            <p>Hola <strong style='color: #d4a84b;'>{$nombre}</strong>,</p>
             <p>{$texto}</p>
             <p style='text-align: center; margin: 30px 0;'>
                 <a href='{$enlace}' class='btn'>{$botonTexto}</a>
             </p>
             <p>Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
-            <p style='word-break: break-all; color: #0d9b5c;'>{$enlace}</p>
+            <p style='word-break: break-all;' class='link'>{$enlace}</p>
             <p>{$textoFinal}</p>
             <div class='footer'>
                 <p>&copy; " . date('Y') . " InverCar. Todos los derechos reservados.</p>
