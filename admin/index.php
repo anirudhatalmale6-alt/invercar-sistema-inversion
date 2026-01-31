@@ -196,7 +196,7 @@ $rentabilidadHistorico = [];
 try {
     // Intentar obtener datos reales de la tabla
     $stmt = $db->prepare("
-        SELECT semana, anio, tipo, porcentaje, rentabilidad_generada, capital_base
+        SELECT semana, anio, tipo, porcentaje, porcentaje_previsto, rentabilidad_generada, capital_base
         FROM rentabilidad_historico
         WHERE (anio = :anio AND semana <= :semana) OR (anio = :anio_prev AND semana > :semana)
         ORDER BY anio DESC, semana DESC
@@ -227,20 +227,30 @@ for ($i = 8; $i >= 0; $i--) {
     // Buscar datos en histórico o simular
     $rentFija = $rentabilidadFija;
     $rentVariable = $rentabilidadVariableActual * (0.8 + (rand(0, 40) / 100)); // Simular variación
+    $rentVariablePrevista = $porcentajeRentabilidadPrevista; // Valor por defecto
 
     foreach ($rentabilidadHistorico as $hist) {
         if ($hist['semana'] == $semNum && $hist['anio'] == $anio) {
-            if ($hist['tipo'] == 'fija') $rentFija = floatval($hist['porcentaje']);
-            if ($hist['tipo'] == 'variable') $rentVariable = floatval($hist['porcentaje']);
+            if ($hist['tipo'] == 'fija') {
+                $rentFija = floatval($hist['porcentaje']);
+            }
+            if ($hist['tipo'] == 'variable') {
+                $rentVariable = floatval($hist['porcentaje']);
+                // Usar porcentaje_previsto del histórico si existe
+                if (isset($hist['porcentaje_previsto']) && $hist['porcentaje_previsto'] !== null) {
+                    $rentVariablePrevista = floatval($hist['porcentaje_previsto']);
+                }
+            }
         }
     }
 
     $mediaRent = ($rentFija + $rentVariable) / 2;
 
-    // Rentabilidad variable prevista (usar el % calculado arriba con pequeña variación para visualización)
-    // Añadir ligera variación para que se vea como línea distinta en el gráfico
-    $variacionPrevista = ($i == 0) ? 0 : (rand(-20, 20) / 10); // variación de -2% a +2%
-    $rentVariablePrevista = max(0, $porcentajeRentabilidadPrevista + $variacionPrevista);
+    // Si no hay datos históricos de prevista, añadir ligera variación para visualización
+    if ($rentVariablePrevista == $porcentajeRentabilidadPrevista && $i > 0) {
+        $variacionPrevista = (rand(-20, 20) / 10); // variación de -2% a +2%
+        $rentVariablePrevista = max(0, $porcentajeRentabilidadPrevista + $variacionPrevista);
+    }
 
     $semanasGrafico[] = [
         'semana' => $semNum,
@@ -806,7 +816,7 @@ $ultimosClientes = $db->query("
                                         ?>
                                         <tr onclick="window.location.href='clientes.php?ver=<?php echo $cliente['id']; ?>'" style="cursor: pointer;" title="Ver detalle de <?php echo escape($cliente['nombre']); ?>">
                                             <td>
-                                                <strong><?php echo escape($cliente['nombre'] . ' ' . $cliente['apellidos']); ?></strong>
+                                                <strong><?php echo escape($cliente['nombre']); ?><?php if (!empty($cliente['apellidos'])): ?> · <?php echo escape($cliente['apellidos']); ?><?php endif; ?></strong>
                                             </td>
                                             <td><strong><?php echo formatMoney($capTotal); ?></strong></td>
                                             <td style="color: var(--blue-accent);"><?php echo formatMoney($capFijo); ?></td>

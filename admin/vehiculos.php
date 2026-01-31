@@ -441,17 +441,19 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                         $fechas = array_values($fechas);
                                     ?>
                                     <tr class="timeline-row">
-                                        <td colspan="11" style="padding: 8px 15px 20px; background: rgba(0,0,0,0.2);">
-                                            <div style="position: relative; height: 40px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-top: 5px;">
+                                        <td colspan="11" style="padding: 10px 15px 25px; background: rgba(0,0,0,0.2);">
+                                            <div style="position: relative; height: 60px; background: linear-gradient(to right, rgba(255,255,255,0.03), rgba(255,255,255,0.08), rgba(255,255,255,0.03)); border-radius: 6px; margin-top: 5px; padding: 0 15px;">
                                                 <!-- Barra de progreso -->
-                                                <div style="position: absolute; top: 50%; transform: translateY(-50%); left: 0; right: 0; height: 4px; background: rgba(255,255,255,0.1);"></div>
+                                                <div style="position: absolute; top: 50%; transform: translateY(-50%); left: 15px; right: 15px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px;"></div>
                                                 <?php
                                                 $prevPorcentaje = null;
                                                 $prevFecha = null;
+                                                $numFechas = count($fechas);
                                                 foreach ($fechas as $idx => $f):
                                                     $fechaPos = new DateTime($f['fecha']);
                                                     $diasDesdeInicio = $inicio->diff($fechaPos)->days;
-                                                    $porcentaje = min(100, max(0, ($diasDesdeInicio / $totalDias) * 100));
+                                                    // Añadir padding para evitar que los extremos se corten
+                                                    $porcentaje = min(95, max(5, ($diasDesdeInicio / $totalDias) * 90 + 5));
 
                                                     // Calcular días desde la fecha anterior
                                                     $diasDesdeAnterior = null;
@@ -462,11 +464,14 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                                     }
                                                 ?>
                                                 <?php if ($diasDesdeAnterior !== null && $diasDesdeAnterior > 0): ?>
-                                                <div style="position: absolute; left: <?php echo $posicionMedio; ?>%; top: 3px; transform: translateX(-50%); font-size: 0.55rem; color: var(--gold); font-weight: 600;"><?php echo $diasDesdeAnterior; ?>d</div>
+                                                <!-- Línea de conexión entre puntos -->
+                                                <div style="position: absolute; left: <?php echo $prevPorcentaje; ?>%; width: <?php echo $porcentaje - $prevPorcentaje; ?>%; top: 50%; transform: translateY(-50%); height: 6px; background: linear-gradient(90deg, <?php echo $fechas[$idx-1]['color']; ?>, <?php echo $f['color']; ?>); border-radius: 3px;"></div>
+                                                <div style="position: absolute; left: <?php echo $posicionMedio; ?>%; top: 8px; transform: translateX(-50%); font-size: 0.7rem; color: var(--gold); font-weight: 700; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 3px;"><?php echo $diasDesdeAnterior; ?>d</div>
                                                 <?php endif; ?>
                                                 <div style="position: absolute; left: <?php echo $porcentaje; ?>%; top: 50%; transform: translate(-50%, -50%); z-index: 2;">
-                                                    <div style="width: 10px; height: 10px; border-radius: 50%; background: <?php echo $f['color']; ?>; border: 2px solid rgba(0,0,0,0.3);" title="<?php echo $f['label']; ?>: <?php echo date('d/m/Y', strtotime($f['fecha'])); ?>"></div>
-                                                    <div style="position: absolute; top: 14px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; white-space: nowrap; color: <?php echo $f['color']; ?>;"><?php echo $f['label']; ?></div>
+                                                    <div style="width: 14px; height: 14px; border-radius: 50%; background: <?php echo $f['color']; ?>; border: 3px solid rgba(0,0,0,0.5); box-shadow: 0 0 8px <?php echo $f['color']; ?>40;" title="<?php echo $f['label']; ?>: <?php echo date('d/m/Y', strtotime($f['fecha'])); ?>"></div>
+                                                    <div style="position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; white-space: nowrap; color: <?php echo $f['color']; ?>; font-weight: 600; text-shadow: 0 1px 2px rgba(0,0,0,0.5);"><?php echo $f['label']; ?></div>
+                                                    <div style="position: absolute; top: 32px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; white-space: nowrap; color: var(--text-muted);"><?php echo date('d/m', strtotime($f['fecha'])); ?></div>
                                                 </div>
                                                 <?php
                                                     $prevPorcentaje = $porcentaje;
@@ -474,7 +479,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                                 endforeach;
                                                 ?>
                                                 <!-- Total días -->
-                                                <div style="position: absolute; right: 5px; top: -2px; font-size: 0.65rem; color: var(--text-muted);"><?php echo $totalDias; ?> días total</div>
+                                                <div style="position: absolute; right: 5px; top: 5px; font-size: 0.75rem; color: var(--text-muted); background: rgba(0,0,0,0.4); padding: 3px 8px; border-radius: 4px;"><strong style="color: var(--gold);"><?php echo $totalDias; ?></strong> días</div>
                                             </div>
                                         </td>
                                     </tr>
@@ -504,13 +509,13 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         <input type="hidden" name="id" value="<?php echo $vehiculoEditar['id']; ?>">
                     <?php endif; ?>
 
-                    <div class="form-group">
-                        <label>Referencia</label>
-                        <input type="text" name="referencia" placeholder="Referencia interna"
-                               value="<?php echo escape($vehiculoEditar['referencia'] ?? ''); ?>">
-                    </div>
-
-                    <div class="form-row">
+                    <!-- 3 columnas para el formulario -->
+                    <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
+                        <div class="form-group">
+                            <label>Referencia</label>
+                            <input type="text" name="referencia" placeholder="Ref. interna"
+                                   value="<?php echo escape($vehiculoEditar['referencia'] ?? ''); ?>">
+                        </div>
                         <div class="form-group">
                             <label>Marca *</label>
                             <input type="text" name="marca" required
@@ -523,7 +528,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         </div>
                     </div>
 
-                    <div class="form-row">
+                    <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
                         <div class="form-group">
                             <label>Versión</label>
                             <input type="text" name="version"
@@ -534,63 +539,56 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                             <input type="text" name="matricula" placeholder="Ej: 1234 ABC"
                                    value="<?php echo escape($vehiculoEditar['matricula'] ?? ''); ?>">
                         </div>
-                    </div>
-
-                    <div class="form-row">
                         <div class="form-group">
                             <label>Año *</label>
                             <input type="number" name="anio" required min="1990" max="2030"
                                    value="<?php echo escape($vehiculoEditar['anio'] ?? date('Y')); ?>">
                         </div>
+                    </div>
+
+                    <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
                         <div class="form-group">
                             <label>Kilómetros</label>
                             <input type="number" name="kilometros" min="0" placeholder="Ej: 50000"
                                    value="<?php echo escape($vehiculoEditar['kilometros'] ?? ''); ?>">
                         </div>
-                    </div>
-
-                    <div class="form-row">
                         <div class="form-group">
-                            <label>Precio de Compra (€) *</label>
+                            <label>Precio Compra (€) *</label>
                             <input type="number" name="precio_compra" required step="0.01" min="0"
                                    value="<?php echo escape($vehiculoEditar['precio_compra'] ?? ''); ?>">
                         </div>
                         <div class="form-group">
-                            <label>Previsión de Gastos (€)</label>
+                            <label>Prev. Gastos (€)</label>
                             <input type="number" name="prevision_gastos" step="0.01" min="0"
                                    value="<?php echo escape($vehiculoEditar['prevision_gastos'] ?? '0'); ?>">
                         </div>
                     </div>
 
-                    <div class="form-row">
+                    <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
                         <div class="form-group">
                             <label>Gastos Reales (€)</label>
                             <input type="number" name="gastos" step="0.01" min="0"
                                    value="<?php echo escape($vehiculoEditar['gastos'] ?? '0'); ?>">
                         </div>
                         <div class="form-group">
-                            <label>Valor Venta Previsto (€) *</label>
+                            <label>Venta Prevista (€) *</label>
                             <input type="number" name="valor_venta_previsto" required step="0.01" min="0"
                                    value="<?php echo escape($vehiculoEditar['valor_venta_previsto'] ?? ''); ?>">
                         </div>
-                    </div>
-
-                    <div class="form-row">
                         <div class="form-group">
-                            <label>Precio Venta Real (€)</label>
+                            <label>Venta Real (€)</label>
                             <input type="number" name="precio_venta_real" step="0.01" min="0"
                                    value="<?php echo escape($vehiculoEditar['precio_venta_real'] ?? ''); ?>"
-                                   placeholder="Solo si ya se vendió">
+                                   placeholder="Si vendido">
                         </div>
+                    </div>
+
+                    <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
                         <div class="form-group">
                             <label>Proveedor</label>
                             <input type="text" name="proveedor" maxlength="150"
-                                   value="<?php echo escape($vehiculoEditar['proveedor'] ?? ''); ?>"
-                                   placeholder="Nombre del proveedor">
+                                   value="<?php echo escape($vehiculoEditar['proveedor'] ?? ''); ?>">
                         </div>
-                    </div>
-
-                    <div class="form-row">
                         <div class="form-group">
                             <label>Estado</label>
                             <select name="estado">
@@ -603,7 +601,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Público para Clientes</label>
+                            <label>Público</label>
                             <select name="publico">
                                 <option value="0" <?php echo ($vehiculoEditar['publico'] ?? 0) == 0 ? 'selected' : ''; ?>>No</option>
                                 <option value="1" <?php echo ($vehiculoEditar['publico'] ?? 0) == 1 ? 'selected' : ''; ?>>Sí</option>
@@ -611,7 +609,43 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         </div>
                     </div>
 
-                    <div class="form-row">
+                    <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
+                        <div class="form-group">
+                            <label>Fecha Compra</label>
+                            <input type="date" name="fecha_compra"
+                                   value="<?php echo escape($vehiculoEditar['fecha_compra'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Transporte</label>
+                            <input type="date" name="fecha_transporte"
+                                   value="<?php echo escape($vehiculoEditar['fecha_transporte'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Recepción</label>
+                            <input type="date" name="fecha_recepcion"
+                                   value="<?php echo escape($vehiculoEditar['fecha_recepcion'] ?? ''); ?>">
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
+                        <div class="form-group">
+                            <label>Fecha Documentación</label>
+                            <input type="date" name="fecha_documentacion"
+                                   value="<?php echo escape($vehiculoEditar['fecha_documentacion'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Puesta Venta</label>
+                            <input type="date" name="fecha_puesta_venta"
+                                   value="<?php echo escape($vehiculoEditar['fecha_puesta_venta'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Venta</label>
+                            <input type="date" name="fecha_venta"
+                                   value="<?php echo escape($vehiculoEditar['fecha_venta'] ?? ''); ?>">
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="grid-template-columns: 1fr 2fr;">
                         <div class="form-group">
                             <label>Foto Principal</label>
                             <input type="file" name="foto" accept="image/jpeg,image/png,image/webp">
@@ -621,45 +655,6 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                     <small style="color: var(--text-muted); margin-left: 5px;">Actual</small>
                                 </div>
                             <?php endif; ?>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Fecha de Compra</label>
-                            <input type="date" name="fecha_compra"
-                                   value="<?php echo escape($vehiculoEditar['fecha_compra'] ?? ''); ?>">
-                        </div>
-                        <div class="form-group">
-                            <label>Fecha Transporte</label>
-                            <input type="date" name="fecha_transporte"
-                                   value="<?php echo escape($vehiculoEditar['fecha_transporte'] ?? ''); ?>">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Fecha Recepción Coche</label>
-                            <input type="date" name="fecha_recepcion"
-                                   value="<?php echo escape($vehiculoEditar['fecha_recepcion'] ?? ''); ?>">
-                        </div>
-                        <div class="form-group">
-                            <label>Fecha Entrega Documentación</label>
-                            <input type="date" name="fecha_documentacion"
-                                   value="<?php echo escape($vehiculoEditar['fecha_documentacion'] ?? ''); ?>">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Fecha Puesta en Venta</label>
-                            <input type="date" name="fecha_puesta_venta"
-                                   value="<?php echo escape($vehiculoEditar['fecha_puesta_venta'] ?? ''); ?>">
-                        </div>
-                        <div class="form-group">
-                            <label>Fecha de Venta</label>
-                            <input type="date" name="fecha_venta"
-                                   value="<?php echo escape($vehiculoEditar['fecha_venta'] ?? ''); ?>">
                         </div>
                     </div>
 

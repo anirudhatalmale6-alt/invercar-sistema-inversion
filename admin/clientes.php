@@ -188,10 +188,10 @@ $vista = cleanInput($_GET['vista'] ?? 'completos');
 
 if ($vista === 'pendientes') {
     // Registros incompletos (solo email/nombre inicial)
-    $sql = "SELECT * FROM clientes WHERE registro_completo = 0";
+    $sql = "SELECT id, nombre, apellidos, email, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, activo, registro_completo, email_verificado, capital_previsto, created_at FROM clientes WHERE registro_completo = 0";
 } else {
     // Clientes con registro completo
-    $sql = "SELECT * FROM clientes WHERE registro_completo = 1";
+    $sql = "SELECT id, nombre, apellidos, email, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, activo, registro_completo, email_verificado, capital_previsto, created_at FROM clientes WHERE registro_completo = 1";
 }
 $params = [];
 
@@ -548,6 +548,9 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                                 <span class="badge <?php echo $c['activo'] ? 'badge-success' : 'badge-danger'; ?>">
                                                     <?php echo $c['activo'] ? 'Activo' : 'Inactivo'; ?>
                                                 </span>
+                                                <?php if (!$c['activo'] && isset($c['capital_previsto']) && $c['capital_previsto'] > 0): ?>
+                                                    <br><small style="color: var(--text-muted);">Previsto: <?php echo formatMoney($c['capital_previsto']); ?></small>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <div class="actions">
