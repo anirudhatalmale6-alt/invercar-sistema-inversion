@@ -142,6 +142,10 @@ $inversionVehiculosVendidos = $db->query("
 $inversionVendidosTotal = floatval($inversionVehiculosVendidos['total']);
 $porcentajeRentabilidadObtenida = $inversionVendidosTotal > 0 ? ($rentabilidadObtenidaTotal / $inversionVendidosTotal) * 100 : 0;
 
+// Calcular semana actual del año
+$semanaActual = (int) date('W');
+$anioActual = (int) date('Y');
+
 // Datos para gráfico de barras de capital (últimas 4 semanas)
 $capitalSemanal = [];
 for ($i = 3; $i >= 0; $i--) {
@@ -186,10 +190,6 @@ for ($i = 3; $i >= 0; $i--) {
         'salida' => $salida
     ];
 }
-
-// Calcular semana actual del año
-$semanaActual = (int) date('W');
-$anioActual = (int) date('Y');
 
 // Obtener últimas 9 semanas de rentabilidad del histórico
 $rentabilidadHistorico = [];
