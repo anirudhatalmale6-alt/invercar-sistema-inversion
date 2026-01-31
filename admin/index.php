@@ -770,8 +770,8 @@ $ultimosClientes = $db->query("
                     </div>
 
                     <!-- Tabla de Clientes -->
-                    <div class="section-title" style="margin-bottom: 10px;">Clientes</div>
-                    <div class="card">
+                    <div class="section-title" style="margin-bottom: 5px;">Clientes</div>
+                    <div class="card" style="margin-bottom: 10px;">
                         <div class="table-responsive">
                             <table>
                                 <thead>
@@ -833,7 +833,7 @@ $ultimosClientes = $db->query("
                     </div>
 
                     <!-- Fichas de Vehículos -->
-                    <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <div class="section-title" style="margin: 0;">Vehículos en Activo</div>
                         <select id="filtroEstado" onchange="window.location.href='?filtro_estado=' + this.value" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem;">
                             <option value="en_estudio" <?php echo $filtroEstado === 'en_estudio' ? 'selected' : ''; ?>>En Estudio</option>
