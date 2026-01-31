@@ -57,6 +57,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
                     $stmt->execute([$nombre, $apellidos, $email, $passwordHash, $token, $tokenExpira]);
 
+                    // Crear mensaje de notificación para el administrador
+                    $clienteId = $db->lastInsertId();
+                    $mensajeAdmin = "Nuevo registro de cliente:\n\nNombre: $nombre $apellidos\nEmail: $email\n\nEl cliente ha iniciado el proceso de registro y está pendiente de verificar su email.";
+                    $stmtMensaje = $db->prepare("
+                        INSERT INTO contactos (nombre, email, mensaje, created_at)
+                        VALUES (?, ?, ?, NOW())
+                    ");
+                    $stmtMensaje->execute([$nombre . ' ' . $apellidos, $email, $mensajeAdmin]);
+
                     // Enviar email de verificación
                     $nombreCompleto = $nombre . ' ' . $apellidos;
                     if (enviarEmailVerificacion($email, $nombreCompleto, $token)) {
