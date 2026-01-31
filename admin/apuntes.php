@@ -30,8 +30,8 @@ foreach ($conceptos as $c) {
     }
 }
 
-// Obtener clientes para el dropdown
-$clientes = $db->query("SELECT id, nombre, apellidos FROM clientes WHERE activo = 1 ORDER BY nombre, apellidos")->fetchAll();
+// Obtener clientes para el dropdown (solo con registro completo)
+$clientes = $db->query("SELECT id, nombre, apellidos FROM clientes WHERE registro_completo = 1 ORDER BY nombre, apellidos")->fetchAll();
 
 // Obtener vehículos para el dropdown
 $vehiculos = $db->query("SELECT id, referencia, matricula, marca, modelo, anio FROM vehiculos ORDER BY marca, modelo")->fetchAll();
@@ -54,6 +54,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $tipo_apunte = cleanInput($_POST['tipo_apunte'] ?? 'D');
             $realizado = intval($_POST['realizado'] ?? 0);
             $activo = intval($_POST['activo'] ?? 1);
+            $tipo_inversion = cleanInput($_POST['tipo_inversion'] ?? 'fija');
+            if (!in_array($tipo_inversion, ['fija', 'variable'])) {
+                $tipo_inversion = 'fija';
+            }
 
             // Validaciones
             $esConceptoCapital = isset($conceptosCapital[$concepto_id]);
@@ -92,21 +96,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $esIngreso = strpos($conceptoTexto, 'ingreso') !== false;
 
                             $sqlCap = "INSERT INTO capital (apunte_id, fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
-                                       VALUES (?, ?, ?, ?, ?, 'variable', ?, 1, ?)";
+                                       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)";
                             $stmtCap = $db->prepare($sqlCap);
                             if ($esIngreso) {
-                                $stmtCap->execute([$nuevoApunteId, $fecha, $cliente_id, $importe, 0, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                                $stmtCap->execute([$nuevoApunteId, $fecha, $cliente_id, $importe, 0, $tipo_inversion, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
                             } else {
-                                $stmtCap->execute([$nuevoApunteId, $fecha, $cliente_id, 0, $importe, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                                $stmtCap->execute([$nuevoApunteId, $fecha, $cliente_id, 0, $importe, $tipo_inversion, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
                             }
-                            $mensajeExtra .= ' Se ha creado registro de capital.';
+                            $mensajeExtra .= ' Se ha creado registro de capital (' . ($tipo_inversion === 'fija' ? 'Fija' : 'Variable') . ').';
                         }
                         // Para otros apuntes con cliente y tipología ingreso, sumar al capital del cliente
                         elseif ($cliente_id && $tipologia === 'ingreso' && !$esConceptoCapital) {
                             $sqlCap = "INSERT INTO capital (apunte_id, fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
-                                       VALUES (?, ?, ?, ?, 0, 'variable', ?, 1, ?)";
+                                       VALUES (?, ?, ?, ?, 0, ?, ?, 1, ?)";
                             $stmtCap = $db->prepare($sqlCap);
-                            $stmtCap->execute([$nuevoApunteId, $fecha, $cliente_id, $importe, $vehiculo_id, 'Ingreso desde Apunte: ' . $descripcion]);
+                            $stmtCap->execute([$nuevoApunteId, $fecha, $cliente_id, $importe, $tipo_inversion, $vehiculo_id, 'Ingreso desde Apunte: ' . $descripcion]);
                             $mensajeExtra .= ' Se ha sumado al capital del cliente.';
                         }
 
@@ -167,19 +171,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $esIngreso = strpos($conceptoTexto, 'ingreso') !== false;
 
                             $sqlCap = "INSERT INTO capital (apunte_id, fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
-                                       VALUES (?, ?, ?, ?, ?, 'variable', ?, 1, ?)";
+                                       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)";
                             $stmtCap = $db->prepare($sqlCap);
                             if ($esIngreso) {
-                                $stmtCap->execute([$id, $fecha, $cliente_id, $importe, 0, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                                $stmtCap->execute([$id, $fecha, $cliente_id, $importe, 0, $tipo_inversion, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
                             } else {
-                                $stmtCap->execute([$id, $fecha, $cliente_id, 0, $importe, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
+                                $stmtCap->execute([$id, $fecha, $cliente_id, 0, $importe, $tipo_inversion, $vehiculo_id, 'Creado desde Apunte: ' . $descripcion]);
                             }
-                            $mensajeExtra .= ' Se ha actualizado el registro de capital.';
+                            $mensajeExtra .= ' Se ha actualizado el registro de capital (' . ($tipo_inversion === 'fija' ? 'Fija' : 'Variable') . ').';
                         } elseif ($cliente_id && $tipologia === 'ingreso' && !$esConceptoCapital) {
                             $sqlCap = "INSERT INTO capital (apunte_id, fecha_ingreso, cliente_id, importe_ingresado, importe_retirado, tipo_inversion, vehiculo_id, activo, notas)
-                                       VALUES (?, ?, ?, ?, 0, 'variable', ?, 1, ?)";
+                                       VALUES (?, ?, ?, ?, 0, ?, ?, 1, ?)";
                             $stmtCap = $db->prepare($sqlCap);
-                            $stmtCap->execute([$id, $fecha, $cliente_id, $importe, $vehiculo_id, 'Ingreso desde Apunte: ' . $descripcion]);
+                            $stmtCap->execute([$id, $fecha, $cliente_id, $importe, $tipo_inversion, $vehiculo_id, 'Ingreso desde Apunte: ' . $descripcion]);
                             $mensajeExtra .= ' Se ha actualizado el capital del cliente.';
                         }
 
@@ -593,6 +597,14 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                         </div>
                     </div>
 
+                    <div class="form-group" id="tipoInversionGroup" style="display: none;">
+                        <label>Tipo de Inversión *</label>
+                        <select name="tipo_inversion" id="tipo_inversion">
+                            <option value="fija" <?php echo ($apunteEditar['tipo_inversion'] ?? 'fija') === 'fija' ? 'selected' : ''; ?>>Rentabilidad Fija</option>
+                            <option value="variable" <?php echo ($apunteEditar['tipo_inversion'] ?? '') === 'variable' ? 'selected' : ''; ?>>Rentabilidad Variable</option>
+                        </select>
+                    </div>
+
                     <div class="form-row">
                         <div class="form-group">
                             <label>Importe (€) *</label>
@@ -653,6 +665,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
             var vehiculoSelect = document.querySelector('select[name="vehiculo_id"]');
             var vehiculoLabel = vehiculoSelect.previousElementSibling;
             var descripcionInput = document.getElementById('descripcion');
+            var tipoInversionGroup = document.getElementById('tipoInversionGroup');
 
             // Auto-rellenar descripción con el texto del concepto seleccionado (solo si está vacío)
             if (this.value && descripcionInput.value.trim() === '') {
@@ -663,9 +676,13 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
             if (conceptosCapitalIds.includes(conceptoId)) {
                 clienteSelect.required = true;
                 clienteLabel.innerHTML = 'Cliente <span style="color: var(--danger);">* (obligatorio para capital)</span>';
+                // Mostrar campo de tipo de inversión
+                tipoInversionGroup.style.display = 'block';
             } else {
                 clienteSelect.required = false;
                 clienteLabel.innerHTML = 'Cliente';
+                // Ocultar campo de tipo de inversión
+                tipoInversionGroup.style.display = 'none';
             }
 
             // Vehículo requerido para conceptos de gasto vehículo
