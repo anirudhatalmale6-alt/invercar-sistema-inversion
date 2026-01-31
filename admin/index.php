@@ -98,6 +98,32 @@ foreach ($stmtCapVeh->fetchAll() as $cv) {
 $rentabilidadFija = floatval(getConfig('rentabilidad_fija', 5));
 $rentabilidadVariableActual = floatval(getConfig('rentabilidad_variable_actual', 14.8));
 
+// Rentabilidad prevista: vehículos activos (NO vendidos)
+// Rentabilidad = valor_venta_previsto - precio_compra - prevision_gastos
+$rentabilidadPrevista = $db->query("
+    SELECT COALESCE(SUM(valor_venta_previsto - precio_compra - prevision_gastos), 0) as total
+    FROM vehiculos
+    WHERE estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
+")->fetch();
+$rentabilidadPrevistaTotal = floatval($rentabilidadPrevista['total']);
+
+// Rentabilidad obtenida: vehículos vendidos
+// Rentabilidad = precio_venta_real - precio_compra - gastos
+$rentabilidadObtenida = $db->query("
+    SELECT COALESCE(SUM(precio_venta_real - precio_compra - gastos), 0) as total
+    FROM vehiculos
+    WHERE estado = 'vendido' AND precio_venta_real IS NOT NULL
+")->fetch();
+$rentabilidadObtenidaTotal = floatval($rentabilidadObtenida['total']);
+
+// Valor de bienes (mismo que landing): valor_venta_previsto de vehículos activos NO en estudio
+$valorBienes = $db->query("
+    SELECT COALESCE(SUM(valor_venta_previsto), 0) as total
+    FROM vehiculos
+    WHERE estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
+")->fetch();
+$valorBienesTotal = floatval($valorBienes['total']);
+
 // Calcular semana actual del año
 $semanaActual = (int) date('W');
 $anioActual = (int) date('Y');
@@ -487,11 +513,11 @@ $ultimosClientes = $db->query("
             color: var(--green-accent);
         }
 
-        /* Gráfico de líneas */
+        /* Gráfico de líneas - reducido */
         .chart-container {
             position: relative;
-            height: 200px;
-            margin-top: 15px;
+            height: 120px;
+            margin-top: 10px;
         }
 
         /* Rentabilidad grande */
@@ -619,10 +645,18 @@ $ultimosClientes = $db->query("
                         <div class="rent-big-icon variable">€</div>
                         <div class="rent-big-title">Rentabilidad Variable</div>
                     </div>
-                    <div class="rent-big-value variable"><?php echo formatMoney($rentabilidadGeneradaVariable); ?></div>
-                    <div class="rent-big-percent">▲ <?php echo number_format($rentabilidadVariableActual, 1, ',', '.'); ?>%</div>
-                    <div class="rent-big-capital">
-                        Capital invertido: <strong><?php echo formatMoney($capitalInvertidoVariable); ?></strong>
+                    <!-- Dividido en dos columnas: Prevista y Obtenida -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;">
+                        <div style="border-right: 1px solid var(--border-color); padding-right: 20px;">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Prevista</div>
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--warning);"><?php echo formatMoney($rentabilidadPrevistaTotal); ?></div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Vehículos activos (no vendidos)</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Obtenida</div>
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--green-accent);"><?php echo formatMoney($rentabilidadObtenidaTotal); ?></div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Vehículos vendidos</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -688,7 +722,7 @@ $ultimosClientes = $db->query("
                                                 $mediaRent = $rentVariablePct;
                                             }
                                         ?>
-                                        <tr>
+                                        <tr onclick="window.location.href='clientes.php?ver=<?php echo $cliente['id']; ?>'" style="cursor: pointer;" title="Ver detalle de <?php echo escape($cliente['nombre']); ?>">
                                             <td>
                                                 <strong><?php echo escape($cliente['nombre'] . ' ' . $cliente['apellidos']); ?></strong>
                                             </td>
@@ -761,7 +795,7 @@ $ultimosClientes = $db->query("
                                 }
                                 $vehiculoGalleryId = 'gallery-' . $vehiculo['id'];
                             ?>
-                            <div class="vehicle-card">
+                            <div class="vehicle-card" onclick="window.location.href='vehiculos.php?editar=<?php echo $vehiculo['id']; ?>'" style="cursor: pointer;" title="Editar <?php echo escape($vehiculo['marca'] . ' ' . $vehiculo['modelo']); ?>">
                                 <div class="vehicle-card-status" style="background: <?php echo $colorEstado['bg']; ?>; color: <?php echo $colorEstado['color']; ?>;">
                                     <?php echo $estadoTextos[$vehiculo['estado']] ?? ucfirst(str_replace('_', ' ', $vehiculo['estado'])); ?>
                                 </div>
@@ -895,6 +929,12 @@ $ultimosClientes = $db->query("
                             <div class="stat-panel-title">Capital</div>
                         </div>
                         <div class="stat-panel-value"><?php echo formatMoney($capitalInvertidoVehiculos + $capitalReserva); ?></div>
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px;">
+                            <div class="stat-panel-row">
+                                <span class="stat-panel-label" style="color: var(--blue-accent);">Valor de Bienes</span>
+                                <span class="stat-panel-amount" style="color: var(--blue-accent); font-weight: 700;"><?php echo formatMoney($valorBienesTotal); ?></span>
+                            </div>
+                        </div>
 
                         <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Por tipo de inversión</div>
                         <div class="stat-panel-row">

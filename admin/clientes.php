@@ -184,7 +184,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Obtener clientes
 $filtro = cleanInput($_GET['filtro'] ?? '');
-$sql = "SELECT * FROM clientes WHERE registro_completo = 1";
+$vista = cleanInput($_GET['vista'] ?? 'completos');
+
+if ($vista === 'pendientes') {
+    // Registros incompletos (solo email/nombre inicial)
+    $sql = "SELECT * FROM clientes WHERE registro_completo = 0";
+} else {
+    // Clientes con registro completo
+    $sql = "SELECT * FROM clientes WHERE registro_completo = 1";
+}
 $params = [];
 
 if ($filtro) {
@@ -196,6 +204,9 @@ $sql .= " ORDER BY created_at DESC";
 $stmt = $db->prepare($sql);
 $stmt->execute($params);
 $clientes = $stmt->fetchAll();
+
+// Contar registros pendientes
+$pendientesCount = $db->query("SELECT COUNT(*) as total FROM clientes WHERE registro_completo = 0")->fetch()['total'];
 
 // Cliente a editar
 $clienteEditar = null;
@@ -403,16 +414,31 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                 </div>
 
             <?php else: ?>
+                <!-- Tabs -->
+                <div style="display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--border-color);">
+                    <a href="?vista=completos" class="btn <?php echo $vista !== 'pendientes' ? 'btn-primary' : 'btn-outline'; ?>" style="border-radius: 0; border-bottom: none;">
+                        Clientes Activos
+                    </a>
+                    <a href="?vista=pendientes" class="btn <?php echo $vista === 'pendientes' ? 'btn-primary' : 'btn-outline'; ?>" style="border-radius: 0; border-bottom: none; position: relative;">
+                        Registros Pendientes
+                        <?php if ($pendientesCount > 0): ?>
+                            <span style="background: #dc2626; color: white; font-size: 11px; padding: 2px 6px; border-radius: 10px; margin-left: 5px;"><?php echo $pendientesCount; ?></span>
+                        <?php endif; ?>
+                    </a>
+                </div>
+
                 <!-- Filtro -->
                 <div class="card" style="margin-bottom: 20px;">
                     <div class="card-body" style="padding: 15px;">
                         <form method="GET" style="display: flex; gap: 10px; align-items: center;">
+                            <input type="hidden" name="vista" value="<?php echo escape($vista); ?>">
                             <input type="text" name="filtro" placeholder="Buscar por nombre, email o teléfono..."
                                    value="<?php echo escape($filtro); ?>" style="flex: 1; padding: 10px;">
                             <button type="submit" class="btn btn-primary">Buscar</button>
                             <?php if ($filtro): ?>
-                                <a href="clientes.php" class="btn btn-outline">Limpiar</a>
+                                <a href="clientes.php?vista=<?php echo escape($vista); ?>" class="btn btn-outline">Limpiar</a>
                             <?php endif; ?>
+                            <?php if ($vista !== 'pendientes'): ?>
                             <a href="?export=csv<?php echo $filtro ? '&filtro=' . urlencode($filtro) : ''; ?>" class="btn btn-outline" title="Exportar a CSV">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -421,6 +447,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                 </svg>
                                 CSV
                             </a>
+                            <?php endif; ?>
                         </form>
                     </div>
                 </div>
@@ -431,7 +458,51 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         <?php if (empty($clientes)): ?>
                             <div class="empty-state">
                                 <div class="icon">👥</div>
-                                <p>No hay clientes registrados</p>
+                                <p><?php echo $vista === 'pendientes' ? 'No hay registros pendientes' : 'No hay clientes registrados'; ?></p>
+                            </div>
+                        <?php elseif ($vista === 'pendientes'): ?>
+                            <!-- Tabla de registros pendientes -->
+                            <div class="table-responsive">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Email</th>
+                                            <th>Capital Previsto</th>
+                                            <th>Email Verificado</th>
+                                            <th>Fecha Registro</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($clientes as $c): ?>
+                                        <tr>
+                                            <td>
+                                                <strong><?php echo escape($c['nombre'] ?: '(Sin nombre)'); ?></strong>
+                                                <?php if ($c['apellidos']): ?><br><small style="color: var(--text-muted);"><?php echo escape($c['apellidos']); ?></small><?php endif; ?>
+                                            </td>
+                                            <td><?php echo escape($c['email']); ?></td>
+                                            <td style="color: var(--text-muted);"><?php echo $c['capital_previsto'] > 0 ? formatMoney($c['capital_previsto']) : '-'; ?></td>
+                                            <td>
+                                                <span class="badge <?php echo $c['email_verificado'] ? 'badge-success' : 'badge-warning'; ?>">
+                                                    <?php echo $c['email_verificado'] ? 'Verificado' : 'No verificado'; ?>
+                                                </span>
+                                            </td>
+                                            <td><?php echo date('d/m/Y H:i', strtotime($c['created_at'])); ?></td>
+                                            <td>
+                                                <div class="actions">
+                                                    <form method="POST" style="display: inline;" onsubmit="return confirm('¿Eliminar este registro pendiente?');">
+                                                        <?php echo csrfField(); ?>
+                                                        <input type="hidden" name="action" value="eliminar">
+                                                        <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
+                                                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
                             </div>
                         <?php else: ?>
                             <div class="table-responsive">
