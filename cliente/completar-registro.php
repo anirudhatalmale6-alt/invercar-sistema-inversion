@@ -73,6 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'Este DNI ya está registrado con otra cuenta.';
                 } else {
                     // Actualizar cliente - activo = 0 hasta activación manual del admin
+                    // capital_previsto es solo informativo, no crea registro en capital
                     $stmt = $db->prepare("
                         UPDATE clientes SET
                             dni = ?,
@@ -82,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             provincia = ?,
                             pais = ?,
                             telefono = ?,
-                            capital_total = ?,
+                            capital_previsto = ?,
                             registro_completo = 1,
                             activo = 0
                         WHERE id = ?
@@ -91,13 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $dni, $direccion, $codigo_postal, $poblacion, $provincia,
                         $pais, $telefono, $capital, $clienteId
                     ]);
-
-                    // Crear registro de capital inicial con tipo fija
-                    $stmtCapital = $db->prepare("
-                        INSERT INTO capital (fecha_ingreso, cliente_id, importe_ingresado, tipo_inversion, activo, notas)
-                        VALUES (CURDATE(), ?, ?, 'fija', 1, 'Capital inicial de registro')
-                    ");
-                    $stmtCapital->execute([$clienteId, $capital]);
 
                     // Limpiar sesión de verificación
                     unset($_SESSION['verificacion_cliente_id']);

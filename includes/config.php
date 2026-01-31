@@ -20,12 +20,12 @@ define('DB_CHARSET', 'utf8mb4');
 define('SITE_URL', 'https://invercar.garaje86.com');
 define('SITE_NAME', 'InverCar');
 
-// Configuración de Email (SMTP Hostalia)
-define('SMTP_HOST', 'smtp.hostalia.com');
+// Configuración de Email (SMTP)
+define('SMTP_HOST', 'smtp.servidor-correo.net');
 define('SMTP_PORT', 587);
-define('SMTP_USER', 'tu_email@tu-dominio.com');
-define('SMTP_PASS', 'tu_password_email');
-define('SMTP_FROM', 'noreply@tu-dominio.com');
+define('SMTP_USER', 'info@garaje86.com');
+define('SMTP_PASS', 'Alcaja01*2026');
+define('SMTP_FROM', 'info@garaje86.com');
 define('SMTP_FROM_NAME', 'InverCar');
 
 // Configuración de seguridad

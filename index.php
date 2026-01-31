@@ -240,8 +240,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                 </div>
                 <div class="step">
                     <div class="step-number">2</div>
-                    <h3>Elige tu Inversión</h3>
-                    <p>Selecciona entre rentabilidad fija o variable según tu perfil de inversor. <em style="color: var(--gold);">(Opción no disponible actualmente)</em></p>
+                    <h3>Indica tu Capital</h3>
+                    <p>Indícanos el capital a disponer y espera nuestro contacto y aprobación.</p>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>

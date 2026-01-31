@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS `clientes` (
   `pais` VARCHAR(100) DEFAULT 'España',
   `telefono` VARCHAR(20) DEFAULT NULL,
   `capital_total` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital total aportado por el cliente (calculado desde tabla capital)',
+  `capital_previsto` DECIMAL(15,2) NOT NULL DEFAULT 0.00 COMMENT 'Capital previsto indicado en el registro (solo informativo)',
   `registro_completo` TINYINT(1) NOT NULL DEFAULT 0,
   `activo` TINYINT(1) NOT NULL DEFAULT 1,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
