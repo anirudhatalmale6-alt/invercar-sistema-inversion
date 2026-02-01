@@ -77,6 +77,30 @@ $estadoFases = [
 // Filtro de estado para vehículos
 $filtroEstado = $_GET['filtro_estado'] ?? 'todos_menos_estudio';
 
+// Ordenar vehículos
+$ordenar = $_GET['ordenar'] ?? 'fecha_compra';
+$ordenValidos = ['fecha_compra', 'dias_venta', 'venta_alta', 'venta_baja'];
+if (!in_array($ordenar, $ordenValidos)) {
+    $ordenar = 'fecha_compra';
+}
+
+// Definir el ORDER BY según la opción seleccionada
+switch ($ordenar) {
+    case 'dias_venta':
+        $orderByClause = "(COALESCE(dias_previstos, 75) - DATEDIFF(NOW(), fecha_compra)) ASC, fecha_compra DESC";
+        break;
+    case 'venta_alta':
+        $orderByClause = "valor_venta_previsto DESC, fecha_compra DESC";
+        break;
+    case 'venta_baja':
+        $orderByClause = "valor_venta_previsto ASC, fecha_compra DESC";
+        break;
+    case 'fecha_compra':
+    default:
+        $orderByClause = "fecha_compra DESC, created_at DESC";
+        break;
+}
+
 // Vehículos activos para las fichas (incluyendo vendidos)
 $sqlVehiculos = "
     SELECT id, referencia, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado, publico, notas, fecha_compra, dias_previstos
@@ -90,7 +114,7 @@ if ($filtroEstado === 'en_estudio') {
 } elseif ($filtroEstado === 'vendido') {
     $sqlVehiculos .= " AND estado = 'vendido'";
 }
-$sqlVehiculos .= " ORDER BY fecha_compra DESC, created_at DESC";
+$sqlVehiculos .= " ORDER BY {$orderByClause}";
 $vehiculosActivos = $db->query($sqlVehiculos)->fetchAll();
 
 // Obtener fotos adicionales de cada vehículo
@@ -538,7 +562,7 @@ $ultimosClientes = $db->query("
         }
         /* Phase timeline (días) */
         .phase-timeline {
-            margin-top: 15px;
+            margin-top: 30px;
             padding-top: 15px;
             border-top: 1px solid var(--border-color);
         }
@@ -953,14 +977,22 @@ $ultimosClientes = $db->query("
                     </div>
 
                     <!-- Fichas de Vehículos -->
-                    <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-wrap: wrap; gap: 10px;">
                         <div class="section-title" style="margin: 0;">Vehículos</div>
-                        <select id="filtroEstado" onchange="window.location.href='?filtro_estado=' + this.value" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem;">
-                            <option value="en_estudio" <?php echo $filtroEstado === 'en_estudio' ? 'selected' : ''; ?>>En Estudio</option>
-                            <option value="todos_menos_estudio" <?php echo $filtroEstado === 'todos_menos_estudio' ? 'selected' : ''; ?>>Todos menos En Estudio</option>
-                            <option value="vendido" <?php echo $filtroEstado === 'vendido' ? 'selected' : ''; ?>>Vendidos</option>
-                            <option value="todos" <?php echo $filtroEstado === 'todos' ? 'selected' : ''; ?>>Todos</option>
-                        </select>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <select id="ordenar" onchange="window.location.href='?filtro_estado=<?php echo $filtroEstado; ?>&ordenar=' + this.value" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem;">
+                                <option value="fecha_compra" <?php echo $ordenar === 'fecha_compra' ? 'selected' : ''; ?>>Fecha Compra</option>
+                                <option value="dias_venta" <?php echo $ordenar === 'dias_venta' ? 'selected' : ''; ?>>Días Venta</option>
+                                <option value="venta_alta" <?php echo $ordenar === 'venta_alta' ? 'selected' : ''; ?>>Venta Prevista Alta</option>
+                                <option value="venta_baja" <?php echo $ordenar === 'venta_baja' ? 'selected' : ''; ?>>Venta Prevista Baja</option>
+                            </select>
+                            <select id="filtroEstado" onchange="window.location.href='?filtro_estado=' + this.value + '&ordenar=<?php echo $ordenar; ?>'" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem;">
+                                <option value="en_estudio" <?php echo $filtroEstado === 'en_estudio' ? 'selected' : ''; ?>>En Estudio</option>
+                                <option value="todos_menos_estudio" <?php echo $filtroEstado === 'todos_menos_estudio' ? 'selected' : ''; ?>>Todos menos En Estudio</option>
+                                <option value="vendido" <?php echo $filtroEstado === 'vendido' ? 'selected' : ''; ?>>Vendidos</option>
+                                <option value="todos" <?php echo $filtroEstado === 'todos' ? 'selected' : ''; ?>>Todos</option>
+                            </select>
+                        </div>
                     </div>
                     <?php if (empty($vehiculosActivos)): ?>
                         <div class="card" style="padding: 40px; text-align: center; color: var(--text-muted);">
