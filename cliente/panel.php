@@ -52,6 +52,89 @@ foreach ($rentabilidad as $r) {
     $rentabilidadMap[$r['semana']] = $r;
 }
 
+// Obtener capital del cliente desde la tabla capital (por tipo de inversión)
+$stmtCapital = $db->prepare("
+    SELECT
+        tipo_inversion,
+        COALESCE(SUM(importe_ingresado), 0) as total_ingresado,
+        COALESCE(SUM(importe_retirado), 0) as total_retirado,
+        COALESCE(SUM(rentabilidad), 0) as total_rentabilidad
+    FROM capital
+    WHERE cliente_id = ? AND activo = 1
+    GROUP BY tipo_inversion
+");
+$stmtCapital->execute([$cliente['id']]);
+$capitalData = [];
+foreach ($stmtCapital->fetchAll() as $row) {
+    $capitalData[$row['tipo_inversion']] = $row;
+}
+
+// Calcular capital por tipo
+$capitalFija = ($capitalData['fija']['total_ingresado'] ?? 0) - ($capitalData['fija']['total_retirado'] ?? 0);
+$capitalVariable = ($capitalData['variable']['total_ingresado'] ?? 0) - ($capitalData['variable']['total_retirado'] ?? 0);
+$capitalTotal = $capitalFija + $capitalVariable;
+$rentabilidadFijaEuros = $capitalData['fija']['total_rentabilidad'] ?? 0;
+$rentabilidadVariableEuros = $capitalData['variable']['total_rentabilidad'] ?? 0;
+$rentabilidadTotalEuros = $rentabilidadFijaEuros + $rentabilidadVariableEuros;
+
+// Tasas de rentabilidad configuradas
+$tasaFija = floatval(getConfig('rentabilidad_fija', 5));
+$tasaVariable = floatval(getConfig('rentabilidad_variable_actual', 14.8));
+
+// Calcular porcentaje de rentabilidad real
+$porcentajeRentFija = $capitalFija > 0 ? ($rentabilidadFijaEuros / $capitalFija) * 100 : $tasaFija;
+$porcentajeRentVariable = $capitalVariable > 0 ? ($rentabilidadVariableEuros / $capitalVariable) * 100 : $tasaVariable;
+
+// Datos para el gráfico de líneas (últimas 9 semanas)
+$semanaActual = (int) date('W');
+$anioActual = (int) date('Y');
+$semanasGrafico = [];
+
+// Obtener datos históricos de rentabilidad del cliente
+$stmtHistorico = $db->prepare("
+    SELECT semana, anio, rentabilidad_porcentaje
+    FROM rentabilidad_semanal
+    WHERE cliente_id = ?
+    ORDER BY anio DESC, semana DESC
+    LIMIT 18
+");
+$stmtHistorico->execute([$cliente['id']]);
+$historialRent = $stmtHistorico->fetchAll();
+
+for ($i = 8; $i >= 0; $i--) {
+    $semNum = $semanaActual - $i;
+    $anio = $anioActual;
+    if ($semNum <= 0) {
+        $semNum += 52;
+        $anio--;
+    }
+
+    // Buscar datos en histórico del cliente
+    $rentSemana = 0;
+    foreach ($historialRent as $hist) {
+        if ($hist['semana'] == $semNum && $hist['anio'] == $anio) {
+            $rentSemana = floatval($hist['rentabilidad_porcentaje']);
+            break;
+        }
+    }
+
+    // Para semana actual, usar la rentabilidad calculada si no hay histórico
+    if ($i === 0 && $rentSemana === 0) {
+        if ($capitalTotal > 0) {
+            $rentSemana = ($rentabilidadTotalEuros / $capitalTotal) * 100;
+        }
+    }
+
+    $semanasGrafico[] = [
+        'semana' => $semNum,
+        'anio' => $anio,
+        'label' => 'S' . $semNum,
+        'fija' => $capitalFija > 0 ? $tasaFija : 0,
+        'variable' => $capitalVariable > 0 ? ($i === 0 ? $porcentajeRentVariable : 0) : 0,
+        'media' => $rentSemana
+    ];
+}
+
 // Filtro de estado para vehículos (solo estados válidos)
 $filtroEstado = $_GET['filtro_estado'] ?? 'todos';
 $estadosValidos = ['en_espera', 'en_preparacion', 'en_venta', 'reservado', 'vendido', 'todos'];
@@ -126,6 +209,7 @@ $estadoFases = [
     <link rel="icon" type="image/svg+xml" href="../assets/images/favicon.svg">
     <link rel="stylesheet" href="../assets/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { font-family: 'Raleway', sans-serif; }
 
@@ -289,6 +373,162 @@ $estadoFases = [
             background: rgba(16, 185, 129, 0.2);
             color: var(--success);
         }
+
+        /* Rentabilidad cards */
+        .rent-big-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        @media (max-width: 768px) {
+            .rent-big-cards { grid-template-columns: 1fr; }
+        }
+        .rent-big-card {
+            background: var(--card-bg);
+            border-radius: 0;
+            border: 1px solid var(--border-color);
+            padding: 25px;
+        }
+        .rent-big-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .rent-big-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+        .rent-big-icon.fija {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+        .rent-big-icon.variable {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+        .rent-big-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        .rent-big-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .rent-big-value.fija { color: #3b82f6; }
+        .rent-big-value.variable { color: var(--success); }
+        .rent-big-percent {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            background: rgba(34, 197, 94, 0.15);
+            border-radius: 0;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--success);
+        }
+        .rent-big-capital {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .rent-big-capital strong {
+            color: var(--text-light);
+        }
+
+        /* Chart card */
+        .chart-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .chart-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .chart-card-header h2 {
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        .chart-card-header span {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        .line-chart-container {
+            position: relative;
+            height: 180px;
+        }
+
+        /* Stat panel for capital */
+        .stat-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        .stat-panel-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .stat-panel-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(212, 168, 75, 0.2);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .stat-panel-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+        .stat-panel-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+        .stat-panel-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .stat-panel-row:last-child {
+            border-bottom: none;
+        }
+        .stat-panel-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .stat-panel-label.fija { color: #3b82f6; }
+        .stat-panel-label.variable { color: var(--success); }
+        .stat-panel-amount {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .stat-panel-amount.fija { color: #3b82f6; }
+        .stat-panel-amount.variable { color: var(--success); }
 
         .profile-section {
             background: var(--card-bg);
@@ -602,35 +842,76 @@ $estadoFases = [
                 <p>Bienvenido a tu área personal. Aquí puedes ver el estado de tu inversión.</p>
             </div>
 
-            <!-- Dashboard Cards -->
-            <?php $capitalInvertido = $cliente['capital_invertido'] ?? 0; ?>
-            <div class="dashboard-grid">
-                <div class="info-card highlight">
-                    <h3>Capital Invertido</h3>
-                    <div class="value"><?php echo formatMoney($capitalInvertido); ?></div>
-                    <div class="label">Tu inversión actual</div>
-                </div>
-
-                <div class="info-card">
-                    <h3>Tipo de Inversión</h3>
-                    <div class="value">
-                        <span class="tipo-badge <?php echo $tipoInversion; ?>">
-                            Rentabilidad <?php echo ucfirst($tipoInversion); ?>
-                        </span>
+            <!-- Tarjetas de Rentabilidad -->
+            <div class="rent-big-cards">
+                <div class="rent-big-card">
+                    <div class="rent-big-header">
+                        <div class="rent-big-icon fija">€</div>
+                        <div class="rent-big-title">Rentabilidad Fija</div>
                     </div>
-                    <div class="label"><?php echo formatPercent($rentabilidadMensual); ?> mensual</div>
+                    <div class="rent-big-value fija"><?php echo formatMoney($rentabilidadFijaEuros); ?></div>
+                    <div class="rent-big-percent">▲ <?php echo number_format($tasaFija, 1, ',', '.'); ?>%</div>
+                    <div class="rent-big-capital">
+                        Capital invertido: <strong><?php echo formatMoney($capitalFija); ?></strong>
+                    </div>
+                </div>
+                <div class="rent-big-card">
+                    <div class="rent-big-header">
+                        <div class="rent-big-icon variable">€</div>
+                        <div class="rent-big-title">Rentabilidad Variable</div>
+                    </div>
+                    <div class="rent-big-value variable"><?php echo formatMoney($rentabilidadVariableEuros); ?></div>
+                    <div class="rent-big-percent">▲ <?php echo number_format($porcentajeRentVariable, 1, ',', '.'); ?>%</div>
+                    <div class="rent-big-capital">
+                        Capital invertido: <strong><?php echo formatMoney($capitalVariable); ?></strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Rentabilidad Media por Semana -->
+            <div class="chart-card">
+                <div class="chart-card-header">
+                    <h2>Rentabilidad Media por Semana</h2>
+                    <span>Últimas 9 semanas</span>
+                </div>
+                <div class="line-chart-container">
+                    <canvas id="rentabilidadLineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Capital Card -->
+            <div class="stat-panel">
+                <div class="stat-panel-header">
+                    <div class="stat-panel-icon">€</div>
+                    <div class="stat-panel-title">Mi Capital</div>
+                </div>
+                <div class="stat-panel-value"><?php echo formatMoney($capitalTotal); ?></div>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                    Total invertido + rentabilidad: <strong style="color: var(--text-light);"><?php echo formatMoney($capitalTotal + $rentabilidadTotalEuros); ?></strong>
                 </div>
 
-                <div class="info-card">
-                    <h3>Rentabilidad Acumulada</h3>
-                    <div class="value"><?php echo formatPercent($rentabilidadAcumuladaPct); ?></div>
-                    <div class="label"><?php echo formatMoney($rentabilidadAcumuladaEuros); ?> en beneficios</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Por tipo de inversión</div>
+                <div class="stat-panel-row">
+                    <span class="stat-panel-label fija">Rentabilidad Fija</span>
+                    <span class="stat-panel-amount fija"><?php echo formatMoney($capitalFija); ?></span>
+                </div>
+                <div class="stat-panel-row">
+                    <span class="stat-panel-label variable">Rentabilidad Variable</span>
+                    <span class="stat-panel-amount variable"><?php echo formatMoney($capitalVariable); ?></span>
                 </div>
 
-                <div class="info-card">
-                    <h3>Capital + Beneficios</h3>
-                    <div class="value"><?php echo formatMoney($capitalInvertido + $rentabilidadAcumuladaEuros); ?></div>
-                    <div class="label">Valor total actual</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Rentabilidad generada</div>
+                <div class="stat-panel-row">
+                    <span class="stat-panel-label fija">Rent. Fija</span>
+                    <span class="stat-panel-amount fija"><?php echo formatMoney($rentabilidadFijaEuros); ?></span>
+                </div>
+                <div class="stat-panel-row">
+                    <span class="stat-panel-label variable">Rent. Variable</span>
+                    <span class="stat-panel-amount variable"><?php echo formatMoney($rentabilidadVariableEuros); ?></span>
+                </div>
+                <div class="stat-panel-row">
+                    <span class="stat-panel-label" style="font-weight: 600; color: var(--text-light);">Total Rentabilidad</span>
+                    <span class="stat-panel-amount" style="color: var(--primary-color);"><?php echo formatMoney($rentabilidadTotalEuros); ?></span>
                 </div>
             </div>
 
@@ -881,6 +1162,118 @@ $estadoFases = [
                 });
             });
         });
+
+        // Gráfico de Rentabilidad Media por Semana
+        const ctx = document.getElementById('rentabilidadLineChart');
+        if (ctx) {
+            new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: <?php echo json_encode(array_column($semanasGrafico, 'label')); ?>,
+                    datasets: [
+                        {
+                            label: 'Fija',
+                            data: <?php echo json_encode(array_column($semanasGrafico, 'fija')); ?>,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4,
+                            pointBackgroundColor: '#3b82f6',
+                            pointBorderColor: '#000',
+                            pointBorderWidth: 1,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Variable',
+                            data: <?php echo json_encode(array_column($semanasGrafico, 'variable')); ?>,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.4,
+                            pointBackgroundColor: '#22c55e',
+                            pointBorderColor: '#000',
+                            pointBorderWidth: 1,
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Media',
+                            data: <?php echo json_encode(array_column($semanasGrafico, 'media')); ?>,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#f59e0b',
+                            pointBorderColor: '#000',
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: '#888',
+                                usePointStyle: true,
+                                padding: 15,
+                                font: { size: 10 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                            titleColor: '#fff',
+                            bodyColor: '#ccc',
+                            borderColor: 'rgba(212, 168, 75, 0.3)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: true,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#888'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 25,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#888',
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>
