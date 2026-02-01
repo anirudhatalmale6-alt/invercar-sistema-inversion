@@ -77,7 +77,7 @@ $capitalTotal = $capitalFija + $capitalVariable;
 // Rentabilidad acumulada total (histórico) - de todos los registros
 $stmtRentAcum = $db->prepare("SELECT COALESCE(SUM(rentabilidad), 0) as total FROM capital WHERE cliente_id = ? AND tipo_inversion = 'fija'");
 $stmtRentAcum->execute([$cliente['id']]);
-$rentabilidadFijaAcumulada = floatval($stmtRentAcum->fetch()['total']);
+$rentabilidadFijaHistorica = floatval($stmtRentAcum->fetch()['total']);
 
 // Rentabilidad actual (solo de capitales activos)
 $rentabilidadFijaEuros = $capitalData['fija']['total_rentabilidad'] ?? 0;
@@ -86,14 +86,29 @@ $rentabilidadTotalEuros = $rentabilidadFijaEuros + $rentabilidadVariableEuros;
 
 // Tasas de rentabilidad configuradas (anual)
 $tasaFijaAnual = floatval(getConfig('rentabilidad_fija', 5));
-$tasaVariableAdmin = floatval(getConfig('rentabilidad_variable_actual', 14.8));
+$tasaVariablePrevistaAdmin = floatval(getConfig('rentabilidad_variable_actual', 14.8));
 
 // Comisiones sobre rentabilidad variable
 $comisionPorcentajeVariable = floatval(getConfig('comision_porcentaje_variable', 15));
 $comisionFijaVariable = floatval(getConfig('comision_fija_variable', 0));
 
-// Rentabilidad variable neta para cliente (restando comisión)
-$tasaVariable = $tasaVariableAdmin - $comisionPorcentajeVariable;
+// Rentabilidad variable PREVISTA neta para cliente (admin - comisión)
+$tasaVariablePrevista = $tasaVariablePrevistaAdmin - $comisionPorcentajeVariable;
+
+// Calcular rentabilidad OBTENIDA del admin (de vehículos vendidos)
+$dbGlobal = getDB();
+$inversionVehiculosVendidos = $dbGlobal->query("
+    SELECT COALESCE(SUM(precio_compra + gastos), 0) as inversion,
+           COALESCE(SUM(precio_venta_real - precio_compra - gastos), 0) as rentabilidad
+    FROM vehiculos
+    WHERE estado = 'vendido' AND precio_venta_real IS NOT NULL
+")->fetch();
+$inversionVendidos = floatval($inversionVehiculosVendidos['inversion']);
+$rentabilidadObtenidaVehiculos = floatval($inversionVehiculosVendidos['rentabilidad']);
+$porcentajeRentabilidadObtenidaAdmin = $inversionVendidos > 0 ? ($rentabilidadObtenidaVehiculos / $inversionVendidos) * 100 : 0;
+
+// Rentabilidad variable OBTENIDA neta para cliente (admin - comisión), pero si es 0 en admin, es 0
+$tasaVariableObtenida = $porcentajeRentabilidadObtenidaAdmin > 0 ? ($porcentajeRentabilidadObtenidaAdmin - $comisionPorcentajeVariable) : 0;
 
 // Calcular rentabilidad fija diaria: (% anual / 365)
 $tasaFijaDiaria = $tasaFijaAnual / 365;
@@ -120,9 +135,11 @@ foreach ($aportacionesFija as $aport) {
     }
 }
 
+// Acumulado = histórico + actual (el acumulado siempre contiene al menos el valor actual)
+$rentabilidadFijaAcumulada = $rentabilidadFijaHistorica + $rentabilidadFijaActualGenerada;
+
 // Calcular porcentaje de rentabilidad real
 $porcentajeRentFija = $capitalFija > 0 ? ($rentabilidadFijaEuros / $capitalFija) * 100 : $tasaFijaAnual;
-$porcentajeRentVariable = $capitalVariable > 0 ? ($rentabilidadVariableEuros / $capitalVariable) * 100 : $tasaVariable;
 
 // Verificar si tiene inversión en variable
 $tieneInversionVariable = $capitalVariable > 0;
@@ -254,7 +271,7 @@ if (!in_array($filtroEstado, $estadosValidos)) {
 if ($filtroEstado === 'todos') {
     $vehiculosActivos = $db->query("
         SELECT v.id, v.referencia, v.marca, v.modelo, v.version, v.anio, v.kilometros,
-               v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra
+               v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra, v.dias_previstos
         FROM vehiculos v
         WHERE v.estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado', 'vendido')
         AND v.publico = 1
@@ -263,7 +280,7 @@ if ($filtroEstado === 'todos') {
 } else {
     $stmt = $db->prepare("
         SELECT v.id, v.referencia, v.marca, v.modelo, v.version, v.anio, v.kilometros,
-               v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra
+               v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra, v.dias_previstos
         FROM vehiculos v
         WHERE v.estado = ?
         AND v.publico = 1
@@ -874,13 +891,13 @@ $estadoFases = [
                             <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Prevista</div>
                             <div style="font-size: 1.8rem; font-weight: 700; color: #f59e0b;"><?php echo formatMoney($rentabilidadVariableEuros); ?></div>
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Capital variable activo</div>
-                            <div style="font-size: 0.9rem; font-weight: 600; color: #f59e0b; margin-top: 4px;"><?php echo number_format($tasaVariable, 1, ',', '.'); ?>%</div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: #f59e0b; margin-top: 4px;"><?php echo number_format($tasaVariablePrevista, 1, ',', '.'); ?>%</div>
                         </div>
                         <div>
                             <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Obtenida</div>
                             <div style="font-size: 1.8rem; font-weight: 700; color: var(--success);"><?php echo formatMoney($rentabilidadVariableEuros); ?></div>
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Beneficios realizados</div>
-                            <div style="font-size: 0.9rem; font-weight: 600; color: var(--success); margin-top: 4px;"><?php echo number_format($porcentajeRentVariable, 1, ',', '.'); ?>%</div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: var(--success); margin-top: 4px;"><?php echo number_format($tasaVariableObtenida, 1, ',', '.'); ?>%</div>
                         </div>
                     </div>
                     <?php if (!$tieneInversionVariable): ?>
@@ -919,6 +936,10 @@ $estadoFases = [
                 </div>
 
                 <!-- Panel Lateral - Mi Capital -->
+                <?php
+                // Calcular rentabilidad total actualizada (fija actual + variable)
+                $rentabilidadTotalActualizada = $rentabilidadFijaActualGenerada + $rentabilidadVariableEuros;
+                ?>
                 <div class="stat-panel" style="margin-bottom: 0;">
                     <div class="stat-panel-header">
                         <div class="stat-panel-icon">€</div>
@@ -926,7 +947,7 @@ $estadoFases = [
                     </div>
                     <div class="stat-panel-value"><?php echo formatMoney($capitalTotal); ?></div>
                     <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px;">
-                        <div class="stat-panel-value" style="font-size: 1.6rem; color: #3b82f6;"><?php echo formatMoney($capitalTotal + $rentabilidadTotalEuros); ?></div>
+                        <div class="stat-panel-value" style="font-size: 1.6rem; color: #3b82f6;"><?php echo formatMoney($capitalTotal + $rentabilidadTotalActualizada); ?></div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">Total + Rentabilidad</div>
                     </div>
 
@@ -942,8 +963,8 @@ $estadoFases = [
 
                     <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Rentabilidad generada</div>
                     <div class="stat-panel-row">
-                        <span class="stat-panel-label fija">Rent. Fija</span>
-                        <span class="stat-panel-amount fija"><?php echo formatMoney($rentabilidadFijaEuros); ?></span>
+                        <span class="stat-panel-label fija">Rent. Fija (actual)</span>
+                        <span class="stat-panel-amount fija"><?php echo formatMoney($rentabilidadFijaActualGenerada); ?></span>
                     </div>
                     <div class="stat-panel-row">
                         <span class="stat-panel-label variable">Rent. Variable</span>
@@ -951,7 +972,7 @@ $estadoFases = [
                     </div>
                     <div class="stat-panel-row">
                         <span class="stat-panel-label" style="font-weight: 600; color: var(--text-light);">Total Rentabilidad</span>
-                        <span class="stat-panel-amount" style="color: var(--primary-color);"><?php echo formatMoney($rentabilidadTotalEuros); ?></span>
+                        <span class="stat-panel-amount" style="color: var(--primary-color);"><?php echo formatMoney($rentabilidadTotalActualizada); ?></span>
                     </div>
                 </div>
             </div>
@@ -979,8 +1000,8 @@ $estadoFases = [
                         $diasDesdeCompra = $hoy->diff($fechaCompra)->days;
                     }
 
-                    // Calcular fecha prevista de venta usando media global
-                    $diasPrevistos = $mediaVentaGlobal;
+                    // Calcular fecha prevista de venta usando dias_previstos del vehículo
+                    $diasPrevistos = intval($vehiculo['dias_previstos'] ?? 75);
 
                     $fechaPrevista = null;
                     if (!empty($vehiculo['fecha_compra'])) {

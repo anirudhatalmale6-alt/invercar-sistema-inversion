@@ -102,6 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $estado = cleanInput($_POST['estado'] ?? 'en_estudio');
             $publico = intval($_POST['publico'] ?? 0);
             $fecha_compra = !empty($_POST['fecha_compra']) ? $_POST['fecha_compra'] : null;
+            $dias_previstos = intval($_POST['dias_previstos'] ?? 75);
+            if ($dias_previstos < 1) $dias_previstos = 75;
             $fecha_transporte = !empty($_POST['fecha_transporte']) ? $_POST['fecha_transporte'] : null;
             $fecha_recepcion = !empty($_POST['fecha_recepcion']) ? $_POST['fecha_recepcion'] : null;
             $fecha_documentacion = !empty($_POST['fecha_documentacion']) ? $_POST['fecha_documentacion'] : null;
@@ -158,10 +160,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 try {
                     if ($action === 'crear') {
-                        $sql = "INSERT INTO vehiculos (referencia, matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, proveedor, estado, publico, fecha_compra, fecha_transporte, fecha_recepcion, fecha_documentacion, fecha_puesta_venta, fecha_venta, notas, foto)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        $sql = "INSERT INTO vehiculos (referencia, matricula, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, precio_venta_real, proveedor, estado, publico, fecha_compra, dias_previstos, fecha_transporte, fecha_recepcion, fecha_documentacion, fecha_puesta_venta, fecha_venta, notas, foto)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $proveedor, $estado, $publico, $fecha_compra, $fecha_transporte, $fecha_recepcion, $fecha_documentacion, $fecha_puesta_venta, $fecha_venta, $notas, $foto]);
+                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $proveedor, $estado, $publico, $fecha_compra, $dias_previstos, $fecha_transporte, $fecha_recepcion, $fecha_documentacion, $fecha_puesta_venta, $fecha_venta, $notas, $foto]);
                         $vehiculoId = $db->lastInsertId();
 
                         // Guardar fotos adicionales
@@ -182,9 +184,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $foto = $actual['foto'] ?? null;
                         }
 
-                        $sql = "UPDATE vehiculos SET referencia=?, matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, proveedor=?, estado=?, publico=?, fecha_compra=?, fecha_transporte=?, fecha_recepcion=?, fecha_documentacion=?, fecha_puesta_venta=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
+                        $sql = "UPDATE vehiculos SET referencia=?, matricula=?, marca=?, modelo=?, version=?, anio=?, kilometros=?, precio_compra=?, prevision_gastos=?, gastos=?, valor_venta_previsto=?, precio_venta_real=?, proveedor=?, estado=?, publico=?, fecha_compra=?, dias_previstos=?, fecha_transporte=?, fecha_recepcion=?, fecha_documentacion=?, fecha_puesta_venta=?, fecha_venta=?, notas=?, foto=? WHERE id=?";
                         $stmt = $db->prepare($sql);
-                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $proveedor, $estado, $publico, $fecha_compra, $fecha_transporte, $fecha_recepcion, $fecha_documentacion, $fecha_puesta_venta, $fecha_venta, $notas, $foto, $id]);
+                        $stmt->execute([$referencia, $matricula, $marca, $modelo, $version, $anio, $kilometros, $precio_compra, $prevision_gastos, $gastos, $valor_venta_previsto, $precio_venta_real, $proveedor, $estado, $publico, $fecha_compra, $dias_previstos, $fecha_transporte, $fecha_recepcion, $fecha_documentacion, $fecha_puesta_venta, $fecha_venta, $notas, $foto, $id]);
 
                         // Guardar fotos adicionales
                         if (!empty($fotosAdicionales)) {
@@ -609,11 +611,17 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         </div>
                     </div>
 
-                    <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="form-row" style="grid-template-columns: repeat(4, 1fr);">
                         <div class="form-group">
                             <label>Fecha Compra</label>
                             <input type="date" name="fecha_compra"
                                    value="<?php echo escape($vehiculoEditar['fecha_compra'] ?? ''); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label>Días Previstos</label>
+                            <input type="number" name="dias_previstos" min="1" max="365"
+                                   value="<?php echo escape($vehiculoEditar['dias_previstos'] ?? 75); ?>">
+                            <small style="color: var(--text-muted);">Días estimados para venta</small>
                         </div>
                         <div class="form-group">
                             <label>Fecha Transporte</label>

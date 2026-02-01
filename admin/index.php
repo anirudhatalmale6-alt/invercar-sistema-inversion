@@ -70,7 +70,7 @@ $filtroEstado = $_GET['filtro_estado'] ?? 'todos_menos_estudio';
 
 // Vehículos activos para las fichas (incluyendo vendidos)
 $sqlVehiculos = "
-    SELECT id, referencia, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado, publico, notas, fecha_compra
+    SELECT id, referencia, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado, publico, notas, fecha_compra, dias_previstos
     FROM vehiculos
     WHERE estado IN ('en_estudio', 'en_espera', 'en_preparacion', 'en_venta', 'reservado', 'vendido')
 ";
@@ -344,6 +344,53 @@ $ultimosClientes = $db->query("
     ORDER BY c.created_at DESC
     LIMIT 5
 ")->fetchAll();
+
+// Preparar datos para gráfico de Inversión (vehículos activos con capital vs rentabilidad prevista)
+$inversionGrafico = [];
+$vehiculosParaGrafico = $db->query("
+    SELECT id, marca, modelo, precio_compra, prevision_gastos, valor_venta_previsto
+    FROM vehiculos
+    WHERE estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
+    ORDER BY fecha_compra DESC
+    LIMIT 8
+")->fetchAll();
+
+foreach ($vehiculosParaGrafico as $veh) {
+    $capitalVeh = floatval($veh['precio_compra']) + floatval($veh['prevision_gastos']);
+    $rentabilidadVeh = floatval($veh['valor_venta_previsto']) - $capitalVeh;
+
+    $inversionGrafico[] = [
+        'label' => substr($veh['marca'], 0, 3) . ' ' . substr($veh['modelo'], 0, 6),
+        'capital' => $capitalVeh,
+        'rentabilidad' => $rentabilidadVeh
+    ];
+}
+$inversionGrafico = array_reverse($inversionGrafico);
+
+// Preparar datos para gráfico de Días (días transcurridos vs previstos)
+$diasGrafico = [];
+$vehiculosParaDias = $db->query("
+    SELECT id, marca, modelo, fecha_compra, dias_previstos
+    FROM vehiculos
+    WHERE estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
+    AND fecha_compra IS NOT NULL
+    ORDER BY fecha_compra DESC
+    LIMIT 8
+")->fetchAll();
+
+$hoyDias = new DateTime();
+foreach ($vehiculosParaDias as $veh) {
+    $fechaCompra = new DateTime($veh['fecha_compra']);
+    $diasTranscurridos = $hoyDias->diff($fechaCompra)->days;
+    $diasPrevistos = intval($veh['dias_previstos'] ?? 75);
+
+    $diasGrafico[] = [
+        'label' => substr($veh['marca'], 0, 3) . ' ' . substr($veh['modelo'], 0, 6),
+        'transcurridos' => $diasTranscurridos,
+        'previstos' => $diasPrevistos
+    ];
+}
+$diasGrafico = array_reverse($diasGrafico);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -810,6 +857,32 @@ $ultimosClientes = $db->query("
             <div class="dashboard-layout" style="grid-template-columns: 1fr 300px;">
                 <!-- Columna Principal -->
                 <div class="dashboard-main">
+                    <!-- Gráfico de Inversión (nuevo - más alto) -->
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="card-header">
+                            <h2>Inversión <?php echo date('Y'); ?></h2>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Capital vs Rentabilidad por vehículo</span>
+                        </div>
+                        <div class="card-body">
+                            <div style="height: 220px;">
+                                <canvas id="inversionBarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico de Días (timeline de vehículos) -->
+                    <div class="card" style="margin-bottom: 20px;">
+                        <div class="card-header">
+                            <h2>Días en Venta</h2>
+                            <span style="color: var(--text-muted); font-size: 0.85rem;">Días transcurridos vs previstos por vehículo</span>
+                        </div>
+                        <div class="card-body">
+                            <div style="height: 180px;">
+                                <canvas id="diasBarChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Gráfico de Rentabilidad Media por Semana -->
                     <div class="card" style="margin-bottom: 25px;">
                         <div class="card-header">
@@ -1173,6 +1246,120 @@ $ultimosClientes = $db->query("
                     dot.classList.toggle('active', i === currentIndex);
                 });
             });
+        });
+
+        // Gráfico de Inversión (Capital vs Rentabilidad por vehículo)
+        const ctxInversion = document.getElementById('inversionBarChart').getContext('2d');
+        new Chart(ctxInversion, {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode(array_column($inversionGrafico, 'label')); ?>,
+                datasets: [
+                    {
+                        label: 'Capital',
+                        data: <?php echo json_encode(array_column($inversionGrafico, 'capital')); ?>,
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Rentabilidad',
+                        data: <?php echo json_encode(array_column($inversionGrafico, 'rentabilidad')); ?>,
+                        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: '#888',
+                            usePointStyle: true,
+                            padding: 15,
+                            font: { size: 10 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#888', font: { size: 9 } }
+                    },
+                    y: {
+                        display: false,
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Días (días transcurridos vs previstos)
+        const ctxDias = document.getElementById('diasBarChart').getContext('2d');
+        new Chart(ctxDias, {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode(array_column($diasGrafico, 'label')); ?>,
+                datasets: [
+                    {
+                        label: 'Días transcurridos',
+                        data: <?php echo json_encode(array_column($diasGrafico, 'transcurridos')); ?>,
+                        backgroundColor: 'rgba(212, 168, 75, 0.8)',
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Días previstos',
+                        data: <?php echo json_encode(array_column($diasGrafico, 'previstos')); ?>,
+                        backgroundColor: 'rgba(107, 114, 128, 0.5)',
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: '#888',
+                            usePointStyle: true,
+                            padding: 15,
+                            font: { size: 10 }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y + ' días';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#888', font: { size: 9 } }
+                    },
+                    y: {
+                        display: false,
+                        beginAtZero: true
+                    }
+                }
+            }
         });
 
         // Gráfico de barras de capital (entrada/salida)
