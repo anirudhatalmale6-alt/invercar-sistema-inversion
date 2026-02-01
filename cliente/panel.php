@@ -230,7 +230,7 @@ for ($i = 8; $i >= 0; $i--) {
         'semana' => $semNum,
         'anio' => $anio,
         'label' => 'S' . $semNum,
-        'fija' => $capitalFija > 0 ? $tasaFija : 0,
+        'fija' => $capitalFija > 0 ? $tasaFijaAnual : 0,
         'variable' => $capitalVariable > 0 ? ($i === 0 ? $porcentajeRentVariable : 0) : 0,
         'media' => $rentSemana
     ];
@@ -1085,33 +1085,6 @@ $estadoFases = [
                 No hay vehículos con el filtro seleccionado
             </div>
             <?php endif; ?>
-
-            <!-- Chart Section -->
-            <div class="chart-section">
-                <h2>Rentabilidad de las últimas 9 semanas</h2>
-                <div class="chart-container">
-                    <?php
-                    $maxRentabilidad = 0;
-                    foreach ($rentabilidadMap as $r) {
-                        if ($r['rentabilidad_porcentaje'] > $maxRentabilidad) {
-                            $maxRentabilidad = $r['rentabilidad_porcentaje'];
-                        }
-                    }
-                    if ($maxRentabilidad == 0) $maxRentabilidad = 10;
-
-                    for ($i = 1; $i <= 9; $i++):
-                        $renta = $rentabilidadMap[$i] ?? null;
-                        $porcentaje = $renta ? $renta['rentabilidad_porcentaje'] : 0;
-                        $altura = $porcentaje > 0 ? ($porcentaje / $maxRentabilidad * 150) : 20;
-                    ?>
-                    <div class="chart-bar <?php echo $porcentaje == 0 ? 'empty' : ''; ?>">
-                        <div class="bar-value"><?php echo $porcentaje > 0 ? formatPercent($porcentaje) : '-'; ?></div>
-                        <div class="bar" style="height: <?php echo $altura; ?>px;"></div>
-                        <div class="bar-label">Sem <?php echo $i; ?></div>
-                    </div>
-                    <?php endfor; ?>
-                </div>
-            </div>
 
         </main>
     </div>
