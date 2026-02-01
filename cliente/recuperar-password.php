@@ -37,8 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute([$token, $expira, $cliente['id']]);
 
                     // Enviar email
-                    $nombre = $cliente['nombre'] . ' ' . $cliente['apellidos'];
-                    enviarEmailRecuperacion($email, $nombre, $token);
+                    $nombre = trim($cliente['nombre'] . ' ' . ($cliente['apellidos'] ?? ''));
+                    $emailEnviado = enviarEmailRecuperacion($email, $nombre, $token);
+                    if (DEBUG_MODE && !$emailEnviado) {
+                        error_log("Error enviando email de recuperación a: $email");
+                    }
                 }
 
                 // Siempre mostrar éxito (no revelar si el email existe)
@@ -109,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="alert alert-error"><?php echo escape($error); ?></div>
                 <?php endif; ?>
 
-                <form method="POST">
+                <form method="POST" id="recuperarForm">
                     <?php echo csrfField(); ?>
 
                     <div class="form-group">
@@ -118,8 +121,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                placeholder="tu@email.com">
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Enviar enlace</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn" style="width: 100%;">Enviar enlace</button>
+                    <div id="loadingMsg" style="display: none; text-align: center; margin-top: 15px; color: var(--primary-color);">
+                        <span style="display: inline-block; animation: pulse 1.5s infinite;">Enviando email de recuperación...</span>
+                    </div>
                 </form>
+                <style>
+                    @keyframes pulse {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.5; }
+                    }
+                </style>
+                <script>
+                document.getElementById('recuperarForm').addEventListener('submit', function() {
+                    document.getElementById('submitBtn').disabled = true;
+                    document.getElementById('submitBtn').textContent = 'Enviando...';
+                    document.getElementById('loadingMsg').style.display = 'block';
+                });
+                </script>
 
                 <p style="text-align: center; margin-top: 20px;">
                     <a href="login.php" style="color: var(--text-muted);">← Volver al login</a>
