@@ -112,6 +112,29 @@ foreach ($stmtCapVeh->fetchAll() as $cv) {
 $rentabilidadFija = floatval(getConfig('rentabilidad_fija', 5));
 $rentabilidadVariableActual = floatval(getConfig('rentabilidad_variable_actual', 14.8));
 
+// Calcular rentabilidad fija diaria: (% anual / 365)
+$tasaFijaDiaria = $rentabilidadFija / 365;
+
+// Calcular rentabilidad fija actual generándose (por día) para TODOS los clientes
+$hoy = new DateTime();
+$stmtAportacionesFija = $db->query("
+    SELECT id, cliente_id, importe_ingresado, importe_retirado, fecha_ingreso, rentabilidad
+    FROM capital
+    WHERE tipo_inversion = 'fija' AND activo = 1 AND importe_ingresado > 0
+");
+$aportacionesFijaGlobal = $stmtAportacionesFija->fetchAll();
+
+$rentabilidadFijaActualGenerada = 0;
+foreach ($aportacionesFijaGlobal as $aport) {
+    $capitalNeto = floatval($aport['importe_ingresado']) - floatval($aport['importe_retirado']);
+    if ($capitalNeto > 0 && $aport['fecha_ingreso']) {
+        $fechaIngreso = new DateTime($aport['fecha_ingreso']);
+        $diasTranscurridos = $hoy->diff($fechaIngreso)->days;
+        // Rentabilidad diaria generada para esta aportación
+        $rentabilidadFijaActualGenerada += $capitalNeto * ($tasaFijaDiaria / 100) * $diasTranscurridos;
+    }
+}
+
 // Rentabilidad prevista: vehículos activos (NO vendidos)
 // Rentabilidad = valor_venta_previsto - precio_compra - prevision_gastos
 $rentabilidadPrevista = $db->query("
@@ -728,25 +751,36 @@ $ultimosClientes = $db->query("
 
             <!-- Tarjetas de Rentabilidad (Arriba) -->
             <div class="rent-big-cards">
+                <!-- RENTABILIDAD FIJA - Dividido en Acumulado y Actual + Gráfico -->
                 <div class="rent-big-card">
                     <div class="rent-big-header">
                         <div class="rent-big-icon fija">€</div>
                         <div class="rent-big-title">Rentabilidad Fija</div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div>
-                            <div class="rent-big-value fija"><?php echo formatMoney($rentabilidadGeneradaFija); ?></div>
-                            <div class="rent-big-percent">▲ <?php echo number_format($rentabilidadFija, 1, ',', '.'); ?>%</div>
-                            <div class="rent-big-capital">
-                                Capital invertido: <strong><?php echo formatMoney($capitalInvertidoFija); ?></strong>
+                        <!-- Columna izquierda: Acumulado y Actual -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div style="border-right: 1px solid var(--border-color); padding-right: 15px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">Acumulado</div>
+                                <div style="font-size: 1.6rem; font-weight: 700; color: var(--blue-accent);"><?php echo formatMoney($rentabilidadAcumuladaFija); ?></div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;">Total histórico</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">Actual</div>
+                                <div style="font-size: 1.6rem; font-weight: 700; color: var(--green-accent);"><?php echo formatMoney($rentabilidadFijaActualGenerada); ?></div>
+                                <div style="font-size: 0.9rem; font-weight: 600; color: var(--green-accent); margin-top: 5px;"><?php echo number_format($rentabilidadFija, 1, ',', '.'); ?>%</div>
                             </div>
                         </div>
+                        <!-- Columna derecha: Gráfico de barras -->
                         <div style="border-left: 1px solid var(--border-color); padding-left: 20px;">
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">Entrada/Salida Capital (4 sem)</div>
                             <div style="height: 80px;">
                                 <canvas id="capitalBarChart"></canvas>
                             </div>
                         </div>
+                    </div>
+                    <div class="rent-big-capital">
+                        Capital invertido: <strong><?php echo formatMoney($capitalFija); ?></strong>
                     </div>
                 </div>
                 <div class="rent-big-card">
