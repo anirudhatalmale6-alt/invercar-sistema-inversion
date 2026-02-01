@@ -86,7 +86,14 @@ $rentabilidadTotalEuros = $rentabilidadFijaEuros + $rentabilidadVariableEuros;
 
 // Tasas de rentabilidad configuradas (anual)
 $tasaFijaAnual = floatval(getConfig('rentabilidad_fija', 5));
-$tasaVariable = floatval(getConfig('rentabilidad_variable_actual', 14.8));
+$tasaVariableAdmin = floatval(getConfig('rentabilidad_variable_actual', 14.8));
+
+// Comisiones sobre rentabilidad variable
+$comisionPorcentajeVariable = floatval(getConfig('comision_porcentaje_variable', 15));
+$comisionFijaVariable = floatval(getConfig('comision_fija_variable', 0));
+
+// Rentabilidad variable neta para cliente (restando comisión)
+$tasaVariable = $tasaVariableAdmin - $comisionPorcentajeVariable;
 
 // Calcular rentabilidad fija diaria: (% anual / 365)
 $tasaFijaDiaria = $tasaFijaAnual / 365;
@@ -839,7 +846,7 @@ $estadoFases = [
                             <div>
                                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">Actual</div>
                                 <div style="font-size: 1.6rem; font-weight: 700; color: #22c55e;"><?php echo formatMoney($rentabilidadFijaActualGenerada); ?></div>
-                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;"><?php echo number_format($tasaFijaAnual, 1, ',', '.'); ?>% anual</div>
+                                <div style="font-size: 0.9rem; font-weight: 600; color: #22c55e; margin-top: 5px;"><?php echo number_format($tasaFijaAnual, 1, ',', '.'); ?>%</div>
                             </div>
                         </div>
                         <!-- Columna derecha: Gráfico de barras -->
@@ -899,11 +906,11 @@ $estadoFases = [
                         </div>
                     </div>
 
-                    <!-- Rentabilidad Media por Semana -->
+                    <!-- Rentabilidad Media Semana (anual) -->
                     <div class="chart-card" style="margin-bottom: 0;">
                         <div class="chart-card-header">
-                            <h2>Rentabilidad Media por Semana</h2>
-                            <span>Últimas 9 semanas</span>
+                            <h2>Rentabilidad Media Semana (anual)</h2>
+                            <span><?php echo number_format($tasaFijaAnual, 1, ',', '.'); ?>% anual</span>
                         </div>
                         <div class="line-chart-container">
                             <canvas id="rentabilidadLineChart"></canvas>

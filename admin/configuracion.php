@@ -23,6 +23,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $campos = [
                 'rentabilidad_fija' => floatval($_POST['rentabilidad_fija'] ?? 5),
                 'rentabilidad_variable_actual' => floatval($_POST['rentabilidad_variable_actual'] ?? 14.8),
+                'comision_porcentaje_variable' => floatval($_POST['comision_porcentaje_variable'] ?? 15),
+                'comision_fija_variable' => floatval($_POST['comision_fija_variable'] ?? 0),
                 'capital_reserva' => floatval($_POST['capital_reserva'] ?? 0),
                 'nombre_empresa' => cleanInput($_POST['nombre_empresa'] ?? 'InverCar'),
                 'email_empresa' => cleanInput($_POST['email_empresa'] ?? ''),
@@ -203,6 +205,20 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                 <input type="number" name="rentabilidad_variable_actual" step="0.01"
                                        value="<?php echo escape($config['rentabilidad_variable_actual'] ?? 14.8); ?>">
                                 <small style="color: var(--text-muted);">Rentabilidad actual mostrada en la landing page</small>
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label>Comisión % s/Variable</label>
+                                <input type="number" name="comision_porcentaje_variable" step="0.01"
+                                       value="<?php echo escape($config['comision_porcentaje_variable'] ?? 15); ?>">
+                                <small style="color: var(--text-muted);">Porcentaje de comisión que se resta de la rentabilidad variable para el cliente</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Comisión s/Variable (€)</label>
+                                <input type="number" name="comision_fija_variable" step="0.01"
+                                       value="<?php echo escape($config['comision_fija_variable'] ?? 0); ?>">
+                                <small style="color: var(--text-muted);">Comisión fija en euros que se resta de la rentabilidad variable</small>
                             </div>
                         </div>
                     </div>
