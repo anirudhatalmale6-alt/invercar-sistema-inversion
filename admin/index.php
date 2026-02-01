@@ -10,6 +10,18 @@ if (!isAdminLogueado()) {
 
 $db = getDB();
 
+// Procesar toggle de público
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_publico'])) {
+    $vehiculoId = intval($_POST['vehiculo_id'] ?? 0);
+    $nuevoPublico = intval($_POST['nuevo_publico'] ?? 0);
+    if ($vehiculoId > 0) {
+        $db->prepare("UPDATE vehiculos SET publico = ? WHERE id = ?")->execute([$nuevoPublico, $vehiculoId]);
+    }
+    // Redirigir para evitar reenvío del formulario
+    header("Location: " . $_SERVER['REQUEST_URI']);
+    exit;
+}
+
 // Estadísticas generales de clientes (usando tabla capital)
 $statsClientes = $db->query("
     SELECT COUNT(DISTINCT c.id) as total
@@ -56,16 +68,18 @@ $statsVehiculos = $db->query("
 // Filtro de estado para vehículos
 $filtroEstado = $_GET['filtro_estado'] ?? 'todos_menos_estudio';
 
-// Vehículos activos para las fichas
+// Vehículos activos para las fichas (incluyendo vendidos)
 $sqlVehiculos = "
     SELECT id, referencia, marca, modelo, version, anio, kilometros, precio_compra, prevision_gastos, gastos, valor_venta_previsto, foto, estado, publico, notas, fecha_compra
     FROM vehiculos
-    WHERE estado IN ('en_estudio', 'en_espera', 'en_preparacion', 'en_venta', 'reservado')
+    WHERE estado IN ('en_estudio', 'en_espera', 'en_preparacion', 'en_venta', 'reservado', 'vendido')
 ";
 if ($filtroEstado === 'en_estudio') {
     $sqlVehiculos .= " AND estado = 'en_estudio'";
 } elseif ($filtroEstado === 'todos_menos_estudio') {
     $sqlVehiculos .= " AND estado != 'en_estudio'";
+} elseif ($filtroEstado === 'vendido') {
+    $sqlVehiculos .= " AND estado = 'vendido'";
 }
 $sqlVehiculos .= " ORDER BY fecha_compra DESC, created_at DESC";
 $vehiculosActivos = $db->query($sqlVehiculos)->fetchAll();
@@ -840,10 +854,11 @@ $ultimosClientes = $db->query("
 
                     <!-- Fichas de Vehículos -->
                     <div style="margin-top: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <div class="section-title" style="margin: 0;">Vehículos en Activo</div>
+                        <div class="section-title" style="margin: 0;">Vehículos</div>
                         <select id="filtroEstado" onchange="window.location.href='?filtro_estado=' + this.value" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem;">
                             <option value="en_estudio" <?php echo $filtroEstado === 'en_estudio' ? 'selected' : ''; ?>>En Estudio</option>
                             <option value="todos_menos_estudio" <?php echo $filtroEstado === 'todos_menos_estudio' ? 'selected' : ''; ?>>Todos menos En Estudio</option>
+                            <option value="vendido" <?php echo $filtroEstado === 'vendido' ? 'selected' : ''; ?>>Vendidos</option>
                             <option value="todos" <?php echo $filtroEstado === 'todos' ? 'selected' : ''; ?>>Todos</option>
                         </select>
                     </div>
@@ -870,12 +885,12 @@ $ultimosClientes = $db->query("
                                     'reservado' => 'Reservado',
                                     'vendido' => 'Vendido'
                                 ];
-                                // Colores para cada estado según cliente:
-                                // En Estudio: Rojo, En Espera: Magenta, En Preparacion: Amarillo
+                                // Colores para cada estado:
+                                // En Estudio: Rojo, En Espera: Naranja, En Preparacion: Amarillo
                                 // En Venta: Violeta, Reservado: Negro, Vendido: Verde
                                 $estadoColores = [
                                     'en_estudio' => ['bg' => '#dc2626', 'color' => '#fff'],
-                                    'en_espera' => ['bg' => '#d946ef', 'color' => '#fff'],
+                                    'en_espera' => ['bg' => '#f97316', 'color' => '#fff'],
                                     'en_preparacion' => ['bg' => '#eab308', 'color' => '#000'],
                                     'en_venta' => ['bg' => '#8b5cf6', 'color' => '#fff'],
                                     'reservado' => ['bg' => '#1f2937', 'color' => '#fff'],
@@ -898,13 +913,18 @@ $ultimosClientes = $db->query("
                                 <div class="vehicle-card-status" style="background: <?php echo $colorEstado['bg']; ?>; color: <?php echo $colorEstado['color']; ?>;">
                                     <?php echo $estadoTextos[$vehiculo['estado']] ?? ucfirst(str_replace('_', ' ', $vehiculo['estado'])); ?>
                                 </div>
-                                <div class="vehicle-card-visibility" title="<?php echo ($vehiculo['publico'] ?? 0) ? 'Visible para clientes' : 'No visible para clientes'; ?>">
-                                    <?php if ($vehiculo['publico'] ?? 0): ?>
-                                        <span style="color: var(--green-accent);">👁</span>
-                                    <?php else: ?>
-                                        <span style="color: var(--danger);">🚫</span>
-                                    <?php endif; ?>
-                                </div>
+                                <form method="POST" class="vehicle-card-visibility" onclick="event.stopPropagation();" title="<?php echo ($vehiculo['publico'] ?? 0) ? 'Visible para clientes - Clic para ocultar' : 'No visible - Clic para mostrar'; ?>">
+                                    <input type="hidden" name="toggle_publico" value="1">
+                                    <input type="hidden" name="vehiculo_id" value="<?php echo $vehiculo['id']; ?>">
+                                    <input type="hidden" name="nuevo_publico" value="<?php echo ($vehiculo['publico'] ?? 0) ? 0 : 1; ?>">
+                                    <button type="submit" style="background: none; border: none; cursor: pointer; padding: 0;">
+                                        <?php if ($vehiculo['publico'] ?? 0): ?>
+                                            <span style="color: var(--green-accent); font-size: 1.1rem;">👁</span>
+                                        <?php else: ?>
+                                            <span style="color: var(--danger); font-size: 1.1rem;">🚫</span>
+                                        <?php endif; ?>
+                                    </button>
+                                </form>
                                 <div class="vehicle-card-image">
                                     <?php if (!empty($vehiculo['notas'])): ?>
                                         <div class="vehicle-tooltip"><?php echo escape($vehiculo['notas']); ?></div>

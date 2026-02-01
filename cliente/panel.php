@@ -52,15 +52,35 @@ foreach ($rentabilidad as $r) {
     $rentabilidadMap[$r['semana']] = $r;
 }
 
-// Obtener vehículos activos (públicos para clientes)
-$vehiculosActivos = $db->query("
-    SELECT v.id, v.referencia, v.marca, v.modelo, v.version, v.anio, v.kilometros,
-           v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra
-    FROM vehiculos v
-    WHERE v.estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
-    AND v.publico = 1
-    ORDER BY v.fecha_compra DESC, v.created_at DESC
-")->fetchAll();
+// Filtro de estado para vehículos (solo estados válidos)
+$filtroEstado = $_GET['filtro_estado'] ?? 'todos';
+$estadosValidos = ['en_espera', 'en_preparacion', 'en_venta', 'reservado', 'vendido', 'todos'];
+if (!in_array($filtroEstado, $estadosValidos)) {
+    $filtroEstado = 'todos';
+}
+
+// Obtener vehículos activos (públicos para clientes) - incluyendo vendidos
+if ($filtroEstado === 'todos') {
+    $vehiculosActivos = $db->query("
+        SELECT v.id, v.referencia, v.marca, v.modelo, v.version, v.anio, v.kilometros,
+               v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra
+        FROM vehiculos v
+        WHERE v.estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado', 'vendido')
+        AND v.publico = 1
+        ORDER BY v.fecha_compra DESC, v.created_at DESC
+    ")->fetchAll();
+} else {
+    $stmt = $db->prepare("
+        SELECT v.id, v.referencia, v.marca, v.modelo, v.version, v.anio, v.kilometros,
+               v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra
+        FROM vehiculos v
+        WHERE v.estado = ?
+        AND v.publico = 1
+        ORDER BY v.fecha_compra DESC, v.created_at DESC
+    ");
+    $stmt->execute([$filtroEstado]);
+    $vehiculosActivos = $stmt->fetchAll();
+}
 
 // Obtener fotos adicionales de cada vehículo
 $fotosPorVehiculo = [];
@@ -88,12 +108,13 @@ if ($mediaResult && $mediaResult['media_dias']) {
     $mediaVentaGlobal = round($mediaResult['media_dias']);
 }
 
-// Estados y fases del vehículo
+// Estados y fases del vehículo (En Espera = naranja)
 $estadoFases = [
-    'en_espera' => ['orden' => 1, 'nombre' => 'Espera', 'color' => '#d946ef'],
+    'en_espera' => ['orden' => 1, 'nombre' => 'Espera', 'color' => '#f97316'],
     'en_preparacion' => ['orden' => 2, 'nombre' => 'Preparación', 'color' => '#eab308'],
     'en_venta' => ['orden' => 3, 'nombre' => 'En Venta', 'color' => '#8b5cf6'],
-    'reservado' => ['orden' => 4, 'nombre' => 'Reservado', 'color' => '#1f2937']
+    'reservado' => ['orden' => 4, 'nombre' => 'Reservado', 'color' => '#1f2937'],
+    'vendido' => ['orden' => 5, 'nombre' => 'Vendido', 'color' => '#22c55e']
 ];
 ?>
 <!DOCTYPE html>
@@ -613,9 +634,19 @@ $estadoFases = [
                 </div>
             </div>
 
-            <!-- Vehículos en Activo -->
+            <!-- Vehículos en Cartera -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <div class="section-title" style="margin-bottom: 0;">Vehículos en Cartera</div>
+                <select id="filtroEstado" onchange="window.location.href='panel.php?filtro_estado=' + this.value" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem; border-radius: 0;">
+                    <option value="todos" <?php echo $filtroEstado === 'todos' ? 'selected' : ''; ?>>Todos</option>
+                    <option value="en_espera" <?php echo $filtroEstado === 'en_espera' ? 'selected' : ''; ?>>En Espera</option>
+                    <option value="en_preparacion" <?php echo $filtroEstado === 'en_preparacion' ? 'selected' : ''; ?>>En Preparación</option>
+                    <option value="en_venta" <?php echo $filtroEstado === 'en_venta' ? 'selected' : ''; ?>>En Venta</option>
+                    <option value="reservado" <?php echo $filtroEstado === 'reservado' ? 'selected' : ''; ?>>Reservado</option>
+                    <option value="vendido" <?php echo $filtroEstado === 'vendido' ? 'selected' : ''; ?>>Vendido</option>
+                </select>
+            </div>
             <?php if (!empty($vehiculosActivos)): ?>
-            <div class="section-title">Vehículos en Cartera</div>
             <div class="vehicle-grid">
                 <?php foreach ($vehiculosActivos as $vehiculo):
                     // Calcular días desde la fecha de compra
@@ -636,16 +667,16 @@ $estadoFases = [
 
                     // Porcentaje de progreso
                     $porcentajeProgreso = min(100, ($diasDesdeCompra / $diasPrevistos) * 100);
-                    $barClass = '';
-                    if ($porcentajeProgreso > 100) {
-                        $barClass = 'phase-bar-danger';
-                    } elseif ($porcentajeProgreso > 75) {
-                        $barClass = 'phase-bar-warning';
+                    // Si es vendido, mostrar 100%
+                    if ($vehiculo['estado'] === 'vendido') {
+                        $porcentajeProgreso = 100;
                     }
 
                     // Estado actual
                     $estadoActual = $vehiculo['estado'];
                     $estadoInfo = $estadoFases[$estadoActual] ?? ['orden' => 0, 'nombre' => ucfirst(str_replace('_', ' ', $estadoActual)), 'color' => '#6b7280'];
+                    // Color de la barra de progreso = color del estado actual
+                    $barColor = $estadoInfo['color'];
 
                     // Collect all photos
                     $todasFotos = [];
@@ -718,7 +749,7 @@ $estadoFases = [
                                 </div>
                             </div>
                             <div class="phase-bar-container">
-                                <div class="phase-bar-progress <?php echo $barClass; ?>" style="width: <?php echo min(100, $porcentajeProgreso); ?>%;"></div>
+                                <div class="phase-bar-progress" style="width: <?php echo min(100, $porcentajeProgreso); ?>%; background: <?php echo $barColor; ?>;"></div>
                             </div>
                             <div class="phase-markers">
                                 <?php foreach ($estadoFases as $key => $fase): ?>
@@ -733,6 +764,10 @@ $estadoFases = [
                     </div>
                 </div>
                 <?php endforeach; ?>
+            </div>
+            <?php else: ?>
+            <div style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 40px; text-align: center; color: var(--text-muted); margin-bottom: 30px;">
+                No hay vehículos con el filtro seleccionado
             </div>
             <?php endif; ?>
 
