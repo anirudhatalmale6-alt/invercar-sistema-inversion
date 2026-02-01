@@ -263,3 +263,130 @@ function enviarEmail($destinatario, $asunto, $mensajeHtml) {
 
     return $enviado;
 }
+
+/**
+ * Enviar email de notificación de nuevo vehículo a clientes
+ */
+function enviarEmailNuevoVehiculo($cliente, $vehiculo) {
+    $email = $cliente['email'];
+    $nombre = $cliente['nombre'];
+
+    $asunto = "Nuevo vehículo disponible en InverCar";
+
+    // Calcular datos del vehículo
+    $diasPrevistos = intval($vehiculo['dias_previstos'] ?? 75);
+    $fechaCompra = !empty($vehiculo['fecha_compra']) ? new DateTime($vehiculo['fecha_compra']) : new DateTime();
+    $fechaPrevista = (clone $fechaCompra)->modify("+{$diasPrevistos} days");
+
+    $fotoUrl = !empty($vehiculo['foto']) ? SITE_URL . '/' . $vehiculo['foto'] : '';
+    $logoUrl = SITE_URL . '/assets/images/logo-invercar.png';
+
+    $mensaje = "
+    <html>
+    <head>
+        <style>
+            body { font-family: 'Raleway', Arial, sans-serif; background-color: #1a1a2e; padding: 20px; margin: 0; }
+            .container { max-width: 600px; margin: 0 auto; background: #16213e; border-radius: 0; padding: 40px; border: 1px solid #d4a84b; }
+            .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(212, 168, 75, 0.3); }
+            .header img { max-width: 200px; height: auto; }
+            p { color: #ffffff; line-height: 1.6; }
+            .vehicle-card { background: #1a1a2e; border: 1px solid rgba(212, 168, 75, 0.3); margin: 20px 0; overflow: hidden; }
+            .vehicle-status { background: #f97316; color: #fff; padding: 5px 15px; font-size: 12px; font-weight: 600; text-transform: uppercase; display: inline-block; }
+            .vehicle-image { width: 100%; height: 200px; background: #0a0a14; }
+            .vehicle-image img { width: 100%; height: 200px; object-fit: cover; }
+            .vehicle-body { padding: 20px; }
+            .vehicle-title { font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 5px; }
+            .vehicle-subtitle { font-size: 13px; color: #888; margin-bottom: 15px; }
+            .vehicle-prices { display: table; width: 100%; }
+            .vehicle-price-item { display: table-cell; width: 50%; text-align: center; padding: 10px; }
+            .vehicle-price-label { font-size: 11px; color: #888; margin-bottom: 5px; }
+            .vehicle-price-value { font-size: 16px; font-weight: 700; }
+            .vehicle-price-value.venta { color: #22c55e; }
+            .vehicle-price-value.fecha { color: #ffffff; }
+            .vehicle-timeline { padding: 15px 20px; border-top: 1px solid rgba(212, 168, 75, 0.3); }
+            .vehicle-days { font-size: 14px; font-weight: 600; color: #22c55e; }
+            .vehicle-expected { font-size: 12px; color: #888; }
+            .btn { display: inline-block; background: linear-gradient(135deg, #d4a84b 0%, #c9a227 100%); color: #1a1a2e !important; padding: 15px 30px; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+            .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(212, 168, 75, 0.3); color: #888; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class='container'>
+            <div class='header'>
+                <img src='{$logoUrl}' alt='InverCar' onerror=\"this.style.display='none';this.parentNode.innerHTML='<span style=color:#d4a84b;font-size:28px;font-weight:bold;>INVERCAR</span>'\" />
+            </div>
+            <p>Hola <strong style='color: #d4a84b;'>{$nombre}</strong>,</p>
+            <p>Te informamos que hay un nuevo vehículo disponible en nuestra cartera de inversión:</p>
+
+            <div class='vehicle-card'>
+                <div style='padding: 10px;'>
+                    <span class='vehicle-status'>ESPERA</span>
+                </div>
+                " . ($fotoUrl ? "<div class='vehicle-image'><img src='{$fotoUrl}' alt='{$vehiculo['marca']} {$vehiculo['modelo']}' /></div>" : "") . "
+                <div class='vehicle-body'>
+                    <div class='vehicle-title'>{$vehiculo['marca']} {$vehiculo['modelo']}</div>
+                    <div class='vehicle-subtitle'>
+                        " . ($vehiculo['version'] ?? '') . " · {$vehiculo['anio']}" . ($vehiculo['kilometros'] ? " · " . number_format($vehiculo['kilometros'], 0, ',', '.') . " km" : "") . "
+                    </div>
+                    <div class='vehicle-prices'>
+                        <div class='vehicle-price-item'>
+                            <div class='vehicle-price-label'>Venta Prevista</div>
+                            <div class='vehicle-price-value venta'>" . number_format($vehiculo['valor_venta_previsto'], 2, ',', '.') . " €</div>
+                        </div>
+                        <div class='vehicle-price-item'>
+                            <div class='vehicle-price-label'>Fecha Prevista</div>
+                            <div class='vehicle-price-value fecha'>" . $fechaPrevista->format('d/m/Y') . "</div>
+                        </div>
+                    </div>
+                </div>
+                <div class='vehicle-timeline'>
+                    <span class='vehicle-days'>0 días</span>
+                    <span class='vehicle-expected' style='float: right;'>Previsto: {$diasPrevistos} días</span>
+                </div>
+            </div>
+
+            <p style='text-align: center; margin: 30px 0;'>
+                <a href='" . SITE_URL . "/cliente/panel.php' class='btn'>Ver en Mi Panel</a>
+            </p>
+
+            <div class='footer'>
+                <p>Si no deseas recibir más notificaciones de nuevos vehículos, puedes desactivarlas en tu panel de configuración.</p>
+                <p>&copy; " . date('Y') . " InverCar. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    ";
+
+    return enviarEmail($email, $asunto, $mensaje);
+}
+
+/**
+ * Notificar a todos los clientes activos sobre un nuevo vehículo
+ */
+function notificarNuevoVehiculoAClientes($vehiculo) {
+    $db = getDB();
+
+    // Obtener clientes activos con registro completo y que acepten notificaciones
+    $clientes = $db->query("
+        SELECT id, nombre, email
+        FROM clientes
+        WHERE activo = 1
+        AND registro_completo = 1
+        AND email_verificado = 1
+        AND (recibir_notificaciones = 1 OR recibir_notificaciones IS NULL)
+    ")->fetchAll();
+
+    $enviados = 0;
+    $errores = 0;
+
+    foreach ($clientes as $cliente) {
+        if (enviarEmailNuevoVehiculo($cliente, $vehiculo)) {
+            $enviados++;
+        } else {
+            $errores++;
+        }
+    }
+
+    return ['enviados' => $enviados, 'errores' => $errores, 'total' => count($clientes)];
+}

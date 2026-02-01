@@ -872,6 +872,53 @@ $estadoFases = [
             .dashboard-layout {
                 grid-template-columns: 1fr !important;
             }
+            /* Rentabilidad Fija responsive */
+            .rent-big-card {
+                padding: 15px;
+            }
+            .rent-big-card > div[style*="grid-template-columns: 1fr 1fr"] {
+                grid-template-columns: 1fr !important;
+                gap: 15px !important;
+            }
+            .rent-fija-columns {
+                grid-template-columns: 1fr !important;
+                gap: 15px !important;
+            }
+            .rent-fija-left {
+                grid-template-columns: 1fr 1fr !important;
+            }
+            .rent-fija-chart {
+                border-left: none !important;
+                border-top: 1px solid var(--border-color) !important;
+                padding-left: 0 !important;
+                padding-top: 15px !important;
+            }
+            /* Rentabilidad Variable responsive */
+            .rent-variable-columns {
+                grid-template-columns: 1fr 1fr !important;
+            }
+            .rent-variable-left {
+                border-right: none !important;
+                padding-right: 0 !important;
+            }
+        }
+        @media (max-width: 480px) {
+            .rent-fija-left {
+                grid-template-columns: 1fr !important;
+            }
+            .rent-fija-left > div:first-child {
+                border-right: none !important;
+                border-bottom: 1px solid var(--border-color) !important;
+                padding-right: 0 !important;
+                padding-bottom: 15px !important;
+            }
+            .rent-variable-columns {
+                grid-template-columns: 1fr !important;
+            }
+            .rent-variable-left {
+                border-bottom: 1px solid var(--border-color) !important;
+                padding-bottom: 15px !important;
+            }
         }
     </style>
 </head>
@@ -902,9 +949,9 @@ $estadoFases = [
                         <div class="rent-big-icon fija">€</div>
                         <div class="rent-big-title">Rentabilidad Fija</div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="rent-fija-columns" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         <!-- Columna izquierda: Acumulado y Actual -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="rent-fija-left" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                             <div style="border-right: 1px solid var(--border-color); padding-right: 15px;">
                                 <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">Acumulado</div>
                                 <div style="font-size: 1.6rem; font-weight: 700; color: #3b82f6;"><?php echo formatMoney($rentabilidadFijaAcumulada); ?></div>
@@ -917,7 +964,7 @@ $estadoFases = [
                             </div>
                         </div>
                         <!-- Columna derecha: Gráfico de barras -->
-                        <div style="border-left: 1px solid var(--border-color); padding-left: 20px;">
+                        <div class="rent-fija-chart" style="border-left: 1px solid var(--border-color); padding-left: 20px;">
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">Últimas 4 Aportaciones</div>
                             <div style="height: 80px;">
                                 <canvas id="capitalBarChart"></canvas>
@@ -936,8 +983,8 @@ $estadoFases = [
                         <div class="rent-big-title">Rentabilidad Variable</div>
                     </div>
                     <!-- Dividido en dos columnas: Prevista y Obtenida -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;">
-                        <div style="border-right: 1px solid var(--border-color); padding-right: 20px;">
+                    <div class="rent-variable-columns" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;">
+                        <div class="rent-variable-left" style="border-right: 1px solid var(--border-color); padding-right: 20px;">
                             <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Prevista</div>
                             <div style="font-size: 1.8rem; font-weight: 700; color: #f59e0b;"><?php echo formatMoney($rentabilidadVariableEuros); ?></div>
                             <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Capital variable activo</div>
