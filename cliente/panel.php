@@ -93,7 +93,8 @@ $comisionPorcentajeVariable = floatval(getConfig('comision_porcentaje_variable',
 $comisionFijaVariable = floatval(getConfig('comision_fija_variable', 0));
 
 // Rentabilidad variable PREVISTA neta para cliente (admin - comisión)
-$tasaVariablePrevista = $tasaVariablePrevistaAdmin - $comisionPorcentajeVariable;
+// Si el resultado es negativo, mostrar 0
+$tasaVariablePrevista = max(0, $tasaVariablePrevistaAdmin - $comisionPorcentajeVariable);
 
 // Calcular rentabilidad OBTENIDA del admin (de vehículos vendidos)
 $dbGlobal = getDB();
