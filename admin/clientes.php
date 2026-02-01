@@ -97,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $provincia = cleanInput($_POST['provincia'] ?? '');
             $pais = cleanInput($_POST['pais'] ?? 'España');
             $activo = intval($_POST['activo'] ?? 1);
+            $registro_completo = intval($_POST['registro_completo'] ?? 0);
 
             // Validaciones
             if (empty($nombre) || empty($email)) {
@@ -132,9 +133,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($stmt->fetch()) {
                             $error = 'Ya existe otro cliente con ese email.';
                         } else {
-                            $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=? WHERE id=?";
+                            $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=?, registro_completo=? WHERE id=?";
                             $stmt = $db->prepare($sql);
-                            $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $id]);
+                            $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $registro_completo, $id]);
                             $exito = 'Cliente actualizado correctamente.';
                         }
                     }
@@ -154,7 +155,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'toggle_activo') {
             $id = intval($_POST['id'] ?? 0);
             $activo = intval($_POST['activo'] ?? 0);
-            $db->prepare("UPDATE clientes SET activo = ? WHERE id = ?")->execute([$activo, $id]);
+            // When activating, also set registro_completo and email_verificado to 1
+            if ($activo) {
+                $db->prepare("UPDATE clientes SET activo = 1, registro_completo = 1, email_verificado = 1 WHERE id = ?")->execute([$id]);
+            } else {
+                $db->prepare("UPDATE clientes SET activo = 0 WHERE id = ?")->execute([$id]);
+            }
             $exito = $activo ? 'Cliente activado.' : 'Cliente desactivado.';
         } elseif ($action === 'guardar_rentabilidad') {
             $clienteId = intval($_POST['cliente_id'] ?? 0);
@@ -475,6 +481,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             <th>Email</th>
                                             <th>Capital Previsto</th>
                                             <th>Email Verificado</th>
+                                            <th>Estado</th>
                                             <th>Fecha Registro</th>
                                             <th>Acciones</th>
                                         </tr>
@@ -499,9 +506,27 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                                     </button>
                                                 </form>
                                             </td>
+                                            <td>
+                                                <span class="badge <?php echo $c['activo'] ? 'badge-success' : 'badge-danger'; ?>">
+                                                    <?php echo $c['activo'] ? 'Activo' : 'Inactivo'; ?>
+                                                </span>
+                                                <?php if (!$c['registro_completo']): ?>
+                                                <br><small style="color: var(--warning);">Registro incompleto</small>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?php echo date('d/m/Y H:i', strtotime($c['created_at'])); ?></td>
                                             <td>
                                                 <div class="actions">
+                                                    <a href="?editar=<?php echo $c['id']; ?>" class="btn btn-sm btn-primary">Editar</a>
+                                                    <?php if (!$c['activo']): ?>
+                                                    <form method="POST" style="display: inline;">
+                                                        <?php echo csrfField(); ?>
+                                                        <input type="hidden" name="action" value="toggle_activo">
+                                                        <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
+                                                        <input type="hidden" name="activo" value="1">
+                                                        <button type="submit" class="btn btn-sm btn-success">Activar</button>
+                                                    </form>
+                                                    <?php endif; ?>
                                                     <form method="POST" style="display: inline;" onsubmit="return confirm('¿Eliminar este registro pendiente?');">
                                                         <?php echo csrfField(); ?>
                                                         <input type="hidden" name="action" value="eliminar">
@@ -675,12 +700,21 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label>Estado</label>
-                        <select name="activo">
-                            <option value="1" <?php echo ($clienteEditar['activo'] ?? 1) == 1 ? 'selected' : ''; ?>>Activo</option>
-                            <option value="0" <?php echo ($clienteEditar['activo'] ?? 1) == 0 ? 'selected' : ''; ?>>Inactivo</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Estado</label>
+                            <select name="activo">
+                                <option value="1" <?php echo ($clienteEditar['activo'] ?? 1) == 1 ? 'selected' : ''; ?>>Activo</option>
+                                <option value="0" <?php echo ($clienteEditar['activo'] ?? 1) == 0 ? 'selected' : ''; ?>>Inactivo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Registro Completo</label>
+                            <select name="registro_completo">
+                                <option value="1" <?php echo ($clienteEditar['registro_completo'] ?? 0) == 1 ? 'selected' : ''; ?>>Sí</option>
+                                <option value="0" <?php echo ($clienteEditar['registro_completo'] ?? 0) == 0 ? 'selected' : ''; ?>>No</option>
+                            </select>
+                        </div>
                     </div>
 
                 </div>

@@ -24,9 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'] ?? '';
         $password2 = $_POST['password2'] ?? '';
 
-        // Validaciones
-        if (empty($nombre) || empty($apellidos) || empty($email) || empty($password)) {
-            $error = 'Por favor, completa todos los campos.';
+        // Validaciones (apellidos/empresa es opcional)
+        if (empty($nombre) || empty($email) || empty($password)) {
+            $error = 'Por favor, completa los campos obligatorios.';
         } elseif (!validarEmail($email)) {
             $error = 'El email no es válido.';
         } elseif (strlen($password) < 8) {
@@ -172,17 +172,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php echo csrfField(); ?>
 
                     <div class="form-group">
-                        <label for="nombre">Nombre *</label>
+                        <label for="nombre">Nombre y Apellidos *</label>
                         <input type="text" id="nombre" name="nombre" required
                                value="<?php echo escape($_POST['nombre'] ?? ''); ?>"
-                               placeholder="Tu nombre">
+                               placeholder="Tu nombre y apellidos">
                     </div>
 
                     <div class="form-group">
-                        <label for="apellidos">Apellidos *</label>
-                        <input type="text" id="apellidos" name="apellidos" required
+                        <label for="apellidos">Empresa</label>
+                        <input type="text" id="apellidos" name="apellidos"
                                value="<?php echo escape($_POST['apellidos'] ?? ''); ?>"
-                               placeholder="Tus apellidos">
+                               placeholder="Nombre de tu empresa (opcional)">
                     </div>
 
                     <div class="form-group">
