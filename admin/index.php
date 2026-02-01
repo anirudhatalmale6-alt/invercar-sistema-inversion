@@ -65,6 +65,15 @@ $statsVehiculos = $db->query("
     FROM vehiculos
 ")->fetch();
 
+// Estados y fases del vehículo
+$estadoFases = [
+    'en_espera' => ['orden' => 1, 'nombre' => 'Espera', 'color' => '#f97316'],
+    'en_preparacion' => ['orden' => 2, 'nombre' => 'Preparación', 'color' => '#eab308'],
+    'en_venta' => ['orden' => 3, 'nombre' => 'En Venta', 'color' => '#8b5cf6'],
+    'reservado' => ['orden' => 4, 'nombre' => 'Reservado', 'color' => '#1f2937'],
+    'vendido' => ['orden' => 5, 'nombre' => 'Vendido', 'color' => '#22c55e']
+];
+
 // Filtro de estado para vehículos
 $filtroEstado = $_GET['filtro_estado'] ?? 'todos_menos_estudio';
 
@@ -345,30 +354,6 @@ $ultimosClientes = $db->query("
     LIMIT 5
 ")->fetchAll();
 
-// Preparar datos para gráfico de Días (días transcurridos vs previstos)
-$diasGrafico = [];
-$vehiculosParaDias = $db->query("
-    SELECT id, marca, modelo, fecha_compra, dias_previstos
-    FROM vehiculos
-    WHERE estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
-    AND fecha_compra IS NOT NULL
-    ORDER BY fecha_compra DESC
-    LIMIT 8
-")->fetchAll();
-
-$hoyDias = new DateTime();
-foreach ($vehiculosParaDias as $veh) {
-    $fechaCompra = new DateTime($veh['fecha_compra']);
-    $diasTranscurridos = $hoyDias->diff($fechaCompra)->days;
-    $diasPrevistos = intval($veh['dias_previstos'] ?? 75);
-
-    $diasGrafico[] = [
-        'label' => substr($veh['marca'], 0, 3) . ' ' . substr($veh['modelo'], 0, 6),
-        'transcurridos' => $diasTranscurridos,
-        'previstos' => $diasPrevistos
-    ];
-}
-$diasGrafico = array_reverse($diasGrafico);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -550,6 +535,62 @@ $diasGrafico = array_reverse($diasGrafico);
         }
         .vehicle-investment-marker-label.prevision {
             color: var(--warning);
+        }
+        /* Phase timeline (días) */
+        .phase-timeline {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+        .phase-timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .phase-timeline-days {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+        .phase-timeline-expected {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .phase-bar-container {
+            height: 24px;
+            background: rgba(255,255,255,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        .phase-bar-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .phase-markers {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        .phase-marker {
+            text-align: center;
+            flex: 1;
+        }
+        .phase-marker-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin: 0 auto 4px;
+        }
+        .phase-marker-dot.active {
+            box-shadow: 0 0 0 3px rgba(212, 168, 75, 0.3);
+        }
+        .phase-marker-label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
         }
         .vehicle-card-image .no-image {
             color: var(--text-muted);
@@ -848,19 +889,6 @@ $diasGrafico = array_reverse($diasGrafico);
                         </div>
                     </div>
 
-                    <!-- Gráfico de Días (timeline de vehículos) -->
-                    <div class="card" style="margin-bottom: 20px;">
-                        <div class="card-header">
-                            <h2>Días</h2>
-                            <span style="color: var(--text-muted); font-size: 0.85rem;">Días transcurridos vs previstos por vehículo</span>
-                        </div>
-                        <div class="card-body">
-                            <div style="height: 180px;">
-                                <canvas id="diasBarChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Tabla de Clientes -->
                     <div class="section-title" style="margin-bottom: 5px;">Clientes</div>
                     <div class="card" style="margin-bottom: 10px;">
@@ -1089,7 +1117,7 @@ $diasGrafico = array_reverse($diasGrafico);
                                     $posCompra = $inversionNecesaria > 0 ? ($precioCompra / $inversionNecesaria) * 100 : 0;
                                     $posPrevision = 100; // Siempre al final ya que es compra + prevision
                                     ?>
-                                    <div class="vehicle-investment-bar" style="margin-bottom: 20px;">
+                                    <div class="vehicle-investment-bar" style="margin-bottom: 0;">
                                         <div class="vehicle-investment-label">
                                             <span>Inversión</span>
                                             <span><?php echo formatMoney($capitalInvertidoVeh); ?> / <?php echo formatMoney($inversionNecesaria); ?></span>
@@ -1102,6 +1130,42 @@ $diasGrafico = array_reverse($diasGrafico);
                                             <div class="vehicle-investment-marker prevision" style="left: <?php echo number_format($posPrevision, 1); ?>%;" title="+ Prev. Gastos: <?php echo formatMoney($prevGastosVeh); ?>"></div>
                                             <span class="vehicle-investment-marker-label prevision" style="left: <?php echo number_format($posPrevision, 1); ?>%;">+Gastos</span>
                                             <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <?php
+                                    // Phase timeline - días
+                                    $diasPrevistos = intval($vehiculo['dias_previstos'] ?? 75);
+                                    $estadoActual = $vehiculo['estado'];
+                                    $estadoInfo = $estadoFases[$estadoActual] ?? ['orden' => 0, 'nombre' => ucfirst(str_replace('_', ' ', $estadoActual)), 'color' => '#6b7280'];
+                                    $barColor = $estadoInfo['color'];
+                                    $porcentajeProgreso = $diasPrevistos > 0 && $diasDesdeCompra !== null ? min(100, ($diasDesdeCompra / $diasPrevistos) * 100) : 0;
+                                    if ($estadoActual === 'vendido') {
+                                        $porcentajeProgreso = 100;
+                                    }
+                                    ?>
+                                    <div class="phase-timeline">
+                                        <div class="phase-timeline-header">
+                                            <div class="phase-timeline-days">
+                                                <span style="color: <?php echo ($diasDesdeCompra !== null && $diasDesdeCompra > $diasPrevistos) ? 'var(--danger)' : 'var(--success)'; ?>;">
+                                                    <?php echo $diasDesdeCompra ?? 0; ?> días
+                                                </span>
+                                            </div>
+                                            <div class="phase-timeline-expected">
+                                                Previsto: <?php echo $diasPrevistos; ?> días
+                                            </div>
+                                        </div>
+                                        <div class="phase-bar-container">
+                                            <div class="phase-bar-progress" style="width: <?php echo min(100, $porcentajeProgreso); ?>%; background: <?php echo $barColor; ?>;"></div>
+                                        </div>
+                                        <div class="phase-markers">
+                                            <?php foreach ($estadoFases as $key => $fase): ?>
+                                            <div class="phase-marker">
+                                                <div class="phase-marker-dot <?php echo $estadoActual === $key ? 'active' : ''; ?>"
+                                                     style="background: <?php echo $fase['color']; ?>;"></div>
+                                                <div class="phase-marker-label"><?php echo $fase['nombre']; ?></div>
+                                            </div>
+                                            <?php endforeach; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -1211,63 +1275,6 @@ $diasGrafico = array_reverse($diasGrafico);
                     dot.classList.toggle('active', i === currentIndex);
                 });
             });
-        });
-
-        // Gráfico de Días (días transcurridos vs previstos)
-        const ctxDias = document.getElementById('diasBarChart').getContext('2d');
-        new Chart(ctxDias, {
-            type: 'bar',
-            data: {
-                labels: <?php echo json_encode(array_column($diasGrafico, 'label')); ?>,
-                datasets: [
-                    {
-                        label: 'Días transcurridos',
-                        data: <?php echo json_encode(array_column($diasGrafico, 'transcurridos')); ?>,
-                        backgroundColor: 'rgba(212, 168, 75, 0.8)',
-                        borderWidth: 0
-                    },
-                    {
-                        label: 'Días previstos',
-                        data: <?php echo json_encode(array_column($diasGrafico, 'previstos')); ?>,
-                        backgroundColor: 'rgba(107, 114, 128, 0.5)',
-                        borderWidth: 0
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: {
-                            color: '#888',
-                            usePointStyle: true,
-                            padding: 15,
-                            font: { size: 10 }
-                        }
-                    },
-                    tooltip: {
-                        backgroundColor: 'rgba(20, 20, 20, 0.95)',
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.parsed.y + ' días';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#888', font: { size: 9 } }
-                    },
-                    y: {
-                        display: false,
-                        beginAtZero: true
-                    }
-                }
-            }
         });
 
         // Gráfico de barras de capital (entrada/salida)
