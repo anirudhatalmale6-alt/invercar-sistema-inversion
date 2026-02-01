@@ -53,7 +53,7 @@ try {
 
         <li class="sidebar-section"><span class="section-text">Comunicación</span></li>
         <li><a href="mensajes-clientes.php" <?php echo $currentPage === 'mensajes-clientes.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['mensajes']; ?></span><span class="menu-text">Chat Clientes</span> <?php if($mensajesClientesNoLeidos > 0): ?><span class="badge badge-danger menu-badge"><?php echo $mensajesClientesNoLeidos; ?></span><?php endif; ?></a></li>
-        <li><a href="contactos.php" <?php echo $currentPage === 'contactos.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['mensajes']; ?></span><span class="menu-text">Contactos Web</span> <?php if($mensajesNoLeidos > 0): ?><span class="badge badge-danger menu-badge"><?php echo $mensajesNoLeidos; ?></span><?php endif; ?></a></li>
+        <li><a href="contactos.php" <?php echo $currentPage === 'contactos.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['mensajes']; ?></span><span class="menu-text">Mensajes</span> <?php if($mensajesNoLeidos > 0): ?><span class="badge badge-danger menu-badge"><?php echo $mensajesNoLeidos; ?></span><?php endif; ?></a></li>
 
         <li class="sidebar-section"><span class="section-text">Sistema</span></li>
         <li><a href="configuracion.php" <?php echo $currentPage === 'configuracion.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['config']; ?></span><span class="menu-text">Configuración</span></a></li>

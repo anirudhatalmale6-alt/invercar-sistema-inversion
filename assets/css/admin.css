@@ -222,8 +222,18 @@ a {
 
 .sidebar-menu .menu-badge {
     margin-left: auto;
-    padding: 2px 8px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
     font-size: 0.7rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ef4444;
+    color: #fff;
+    font-weight: 600;
+    border: none;
 }
 
 .sidebar.collapsed .menu-badge {
