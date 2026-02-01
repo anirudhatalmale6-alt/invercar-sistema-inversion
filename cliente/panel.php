@@ -582,10 +582,11 @@ $estadoFases = [
             </div>
 
             <!-- Dashboard Cards -->
+            <?php $capitalInvertido = $cliente['capital_invertido'] ?? 0; ?>
             <div class="dashboard-grid">
                 <div class="info-card highlight">
                     <h3>Capital Invertido</h3>
-                    <div class="value"><?php echo formatMoney($cliente['capital_invertido']); ?></div>
+                    <div class="value"><?php echo formatMoney($capitalInvertido); ?></div>
                     <div class="label">Tu inversión actual</div>
                 </div>
 
@@ -607,7 +608,7 @@ $estadoFases = [
 
                 <div class="info-card">
                     <h3>Capital + Beneficios</h3>
-                    <div class="value"><?php echo formatMoney($cliente['capital_invertido'] + $rentabilidadAcumuladaEuros); ?></div>
+                    <div class="value"><?php echo formatMoney($capitalInvertido + $rentabilidadAcumuladaEuros); ?></div>
                     <div class="label">Valor total actual</div>
                 </div>
             </div>
