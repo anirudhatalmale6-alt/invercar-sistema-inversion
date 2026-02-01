@@ -73,64 +73,120 @@ foreach ($stmtCapital->fetchAll() as $row) {
 $capitalFija = ($capitalData['fija']['total_ingresado'] ?? 0) - ($capitalData['fija']['total_retirado'] ?? 0);
 $capitalVariable = ($capitalData['variable']['total_ingresado'] ?? 0) - ($capitalData['variable']['total_retirado'] ?? 0);
 $capitalTotal = $capitalFija + $capitalVariable;
+
+// Rentabilidad acumulada total (histórico) - de todos los registros
+$stmtRentAcum = $db->prepare("SELECT COALESCE(SUM(rentabilidad), 0) as total FROM capital WHERE cliente_id = ? AND tipo_inversion = 'fija'");
+$stmtRentAcum->execute([$cliente['id']]);
+$rentabilidadFijaAcumulada = floatval($stmtRentAcum->fetch()['total']);
+
+// Rentabilidad actual (solo de capitales activos)
 $rentabilidadFijaEuros = $capitalData['fija']['total_rentabilidad'] ?? 0;
 $rentabilidadVariableEuros = $capitalData['variable']['total_rentabilidad'] ?? 0;
 $rentabilidadTotalEuros = $rentabilidadFijaEuros + $rentabilidadVariableEuros;
 
-// Tasas de rentabilidad configuradas
-$tasaFija = floatval(getConfig('rentabilidad_fija', 5));
+// Tasas de rentabilidad configuradas (anual)
+$tasaFijaAnual = floatval(getConfig('rentabilidad_fija', 5));
 $tasaVariable = floatval(getConfig('rentabilidad_variable_actual', 14.8));
 
+// Calcular rentabilidad fija diaria: (% anual / 365)
+$tasaFijaDiaria = $tasaFijaAnual / 365;
+
+// Calcular rentabilidad fija actual generándose (por día)
+// Obtener cada aportación activa y calcular días desde ingreso
+$stmtAportaciones = $db->prepare("
+    SELECT id, importe_ingresado, importe_retirado, fecha_ingreso, rentabilidad
+    FROM capital
+    WHERE cliente_id = ? AND tipo_inversion = 'fija' AND activo = 1
+");
+$stmtAportaciones->execute([$cliente['id']]);
+$aportacionesFija = $stmtAportaciones->fetchAll();
+
+$rentabilidadFijaActualGenerada = 0;
+$hoy = new DateTime();
+foreach ($aportacionesFija as $aport) {
+    $capitalNeto = floatval($aport['importe_ingresado']) - floatval($aport['importe_retirado']);
+    if ($capitalNeto > 0 && $aport['fecha_ingreso']) {
+        $fechaIngreso = new DateTime($aport['fecha_ingreso']);
+        $diasTranscurridos = $hoy->diff($fechaIngreso)->days;
+        // Rentabilidad diaria generada para esta aportación
+        $rentabilidadFijaActualGenerada += $capitalNeto * ($tasaFijaDiaria / 100) * $diasTranscurridos;
+    }
+}
+
 // Calcular porcentaje de rentabilidad real
-$porcentajeRentFija = $capitalFija > 0 ? ($rentabilidadFijaEuros / $capitalFija) * 100 : $tasaFija;
+$porcentajeRentFija = $capitalFija > 0 ? ($rentabilidadFijaEuros / $capitalFija) * 100 : $tasaFijaAnual;
 $porcentajeRentVariable = $capitalVariable > 0 ? ($rentabilidadVariableEuros / $capitalVariable) * 100 : $tasaVariable;
 
-// Datos para gráfico de barras de capital (últimas 4 semanas) - igual que admin
-$semanaActual = (int) date('W');
-$anioActual = (int) date('Y');
-$capitalSemanal = [];
-for ($i = 3; $i >= 0; $i--) {
-    $semNum = $semanaActual - $i;
-    $anio = $anioActual;
-    if ($semNum <= 0) {
-        $semNum += 52;
-        $anio--;
-    }
+// Verificar si tiene inversión en variable
+$tieneInversionVariable = $capitalVariable > 0;
 
-    // Calcular fechas de inicio y fin de la semana
-    $inicioSemana = new DateTime();
-    $inicioSemana->setISODate($anio, $semNum, 1);
-    $finSemana = clone $inicioSemana;
-    $finSemana->modify('+6 days');
+// Obtener las últimas 4 aportaciones de capital fija para el gráfico de barras
+$stmtUltimasAportaciones = $db->prepare("
+    SELECT id, importe_ingresado, fecha_ingreso, rentabilidad,
+           WEEK(fecha_ingreso, 1) as semana,
+           YEAR(fecha_ingreso) as anio
+    FROM capital
+    WHERE cliente_id = ? AND tipo_inversion = 'fija' AND importe_ingresado > 0
+    ORDER BY fecha_ingreso DESC
+    LIMIT 4
+");
+$stmtUltimasAportaciones->execute([$cliente['id']]);
+$ultimasAportaciones = array_reverse($stmtUltimasAportaciones->fetchAll());
 
-    $fechaInicio = $inicioSemana->format('Y-m-d');
-    $fechaFin = $finSemana->format('Y-m-d');
+// Preparar datos para gráfico de barras (capital vs beneficio por aportación)
+$aportacionesGrafico = [];
+foreach ($ultimasAportaciones as $aport) {
+    $anioCorto = substr($aport['anio'], -2);
+    $label = 'S' . $aport['semana'] . '-' . $anioCorto;
 
-    // Obtener entradas de capital del cliente en esa semana
-    $stmtEntrada = $db->prepare("
-        SELECT COALESCE(SUM(importe_ingresado), 0) as total
-        FROM capital
-        WHERE cliente_id = ? AND fecha_ingreso BETWEEN ? AND ? AND activo = 1
-    ");
-    $stmtEntrada->execute([$cliente['id'], $fechaInicio, $fechaFin]);
-    $entrada = floatval($stmtEntrada->fetch()['total']);
+    // Calcular beneficio generado hasta ahora para esta aportación
+    $capitalAport = floatval($aport['importe_ingresado']);
+    $fechaIngreso = new DateTime($aport['fecha_ingreso']);
+    $diasTranscurridos = $hoy->diff($fechaIngreso)->days;
+    $beneficioGenerado = $capitalAport * ($tasaFijaDiaria / 100) * $diasTranscurridos;
 
-    // Obtener salidas de capital del cliente en esa semana
-    $stmtSalida = $db->prepare("
-        SELECT COALESCE(SUM(importe_retirado), 0) as total
-        FROM capital
-        WHERE cliente_id = ? AND fecha_retirada BETWEEN ? AND ? AND activo = 1
-    ");
-    $stmtSalida->execute([$cliente['id'], $fechaInicio, $fechaFin]);
-    $salida = floatval($stmtSalida->fetch()['total']);
-
-    $capitalSemanal[] = [
-        'semana' => $semNum,
-        'label' => 'S' . $semNum,
-        'entrada' => $entrada,
-        'salida' => $salida
+    $aportacionesGrafico[] = [
+        'label' => $label,
+        'capital' => $capitalAport,
+        'beneficio' => round($beneficioGenerado, 2)
     ];
 }
+
+// Obtener TODAS las inversiones del cliente para el cuadro de Inversión
+$stmtTodasInversiones = $db->prepare("
+    SELECT id, importe_ingresado, fecha_ingreso, rentabilidad, tipo_inversion,
+           YEAR(fecha_ingreso) as anio
+    FROM capital
+    WHERE cliente_id = ? AND importe_ingresado > 0 AND activo = 1
+    ORDER BY fecha_ingreso ASC
+");
+$stmtTodasInversiones->execute([$cliente['id']]);
+$todasInversiones = $stmtTodasInversiones->fetchAll();
+
+// Preparar datos para gráfico de inversiones
+$inversionesGrafico = [];
+$contadorInversion = 1;
+foreach ($todasInversiones as $inv) {
+    $capitalInv = floatval($inv['importe_ingresado']);
+    $fechaIngreso = new DateTime($inv['fecha_ingreso']);
+    $diasTranscurridos = $hoy->diff($fechaIngreso)->days;
+
+    if ($inv['tipo_inversion'] === 'fija') {
+        $beneficio = $capitalInv * ($tasaFijaDiaria / 100) * $diasTranscurridos;
+    } else {
+        $beneficio = floatval($inv['rentabilidad']);
+    }
+
+    $inversionesGrafico[] = [
+        'label' => 'Inv ' . $contadorInversion,
+        'capital' => $capitalInv,
+        'rentabilidad' => round($beneficio, 2)
+    ];
+    $contadorInversion++;
+}
+
+$semanaActual = (int) date('W');
+$anioActual = (int) date('Y');
 
 // Datos para el gráfico de líneas (últimas 9 semanas)
 $semanasGrafico = [];
@@ -429,6 +485,27 @@ $estadoFases = [
         }
         .stat-panel-amount.fija { color: #3b82f6; }
         .stat-panel-amount.variable { color: var(--success); }
+
+        /* Card difuminada (sin inversión) */
+        .card-blurred {
+            position: relative;
+            opacity: 0.6;
+            filter: blur(1px);
+        }
+        .card-blurred::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.1);
+            z-index: 1;
+            pointer-events: none;
+        }
+        .card-blurred > * {
+            position: relative;
+        }
 
         .profile-section {
             background: var(--card-bg);
@@ -743,30 +820,43 @@ $estadoFases = [
                 </div>
             </div>
 
-            <!-- Tarjetas de Rentabilidad (Arriba) - Igual que Admin -->
+            <!-- Tarjetas de Rentabilidad (Arriba) -->
             <div class="rent-big-cards">
+                <!-- RENTABILIDAD FIJA - Dividido en Acumulado y Actual + Gráfico -->
                 <div class="rent-big-card">
                     <div class="rent-big-header">
                         <div class="rent-big-icon fija">€</div>
                         <div class="rent-big-title">Rentabilidad Fija</div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div>
-                            <div class="rent-big-value fija"><?php echo formatMoney($rentabilidadFijaEuros); ?></div>
-                            <div class="rent-big-percent">▲ <?php echo number_format($tasaFija, 1, ',', '.'); ?>%</div>
-                            <div class="rent-big-capital">
-                                Capital invertido: <strong><?php echo formatMoney($capitalFija); ?></strong>
+                        <!-- Columna izquierda: Acumulado y Actual -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div style="border-right: 1px solid var(--border-color); padding-right: 15px;">
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">Acumulado</div>
+                                <div style="font-size: 1.6rem; font-weight: 700; color: #3b82f6;"><?php echo formatMoney($rentabilidadFijaAcumulada); ?></div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;">Total histórico</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase;">Actual</div>
+                                <div style="font-size: 1.6rem; font-weight: 700; color: #22c55e;"><?php echo formatMoney($rentabilidadFijaActualGenerada); ?></div>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 5px;"><?php echo number_format($tasaFijaAnual, 1, ',', '.'); ?>% anual</div>
                             </div>
                         </div>
+                        <!-- Columna derecha: Gráfico de barras -->
                         <div style="border-left: 1px solid var(--border-color); padding-left: 20px;">
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">Entrada/Salida Capital (4 sem)</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">Últimas 4 Aportaciones</div>
                             <div style="height: 80px;">
                                 <canvas id="capitalBarChart"></canvas>
                             </div>
                         </div>
                     </div>
+                    <div class="rent-big-capital">
+                        Capital invertido: <strong><?php echo formatMoney($capitalFija); ?></strong>
+                    </div>
                 </div>
-                <div class="rent-big-card">
+
+                <!-- RENTABILIDAD VARIABLE - Con efecto difuminado si no tiene inversión -->
+                <div class="rent-big-card <?php echo !$tieneInversionVariable ? 'card-blurred' : ''; ?>">
                     <div class="rent-big-header">
                         <div class="rent-big-icon variable">€</div>
                         <div class="rent-big-title">Rentabilidad Variable</div>
@@ -786,19 +876,38 @@ $estadoFases = [
                             <div style="font-size: 0.9rem; font-weight: 600; color: var(--success); margin-top: 4px;"><?php echo number_format($porcentajeRentVariable, 1, ',', '.'); ?>%</div>
                         </div>
                     </div>
+                    <?php if (!$tieneInversionVariable): ?>
+                    <div style="margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); font-size: 0.8rem; color: var(--text-muted); text-align: center;">
+                        No tienes inversión en rentabilidad variable
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
-            <!-- Layout principal: Gráfico izquierda + Capital derecha -->
+            <!-- Layout principal: Gráficos izquierda + Capital derecha -->
             <div class="dashboard-layout" style="display: grid; grid-template-columns: 1fr 300px; gap: 25px; margin-bottom: 25px;">
-                <!-- Columna Principal - Gráfico -->
-                <div class="chart-card" style="margin-bottom: 0;">
-                    <div class="chart-card-header">
-                        <h2>Rentabilidad Media por Semana</h2>
-                        <span>Últimas 9 semanas</span>
+                <!-- Columna Principal - Gráficos -->
+                <div>
+                    <!-- Cuadro de Inversión (nuevo) -->
+                    <div class="chart-card" style="margin-bottom: 20px;">
+                        <div class="chart-card-header">
+                            <h2>Inversión <?php echo date('Y'); ?></h2>
+                            <span>Capital vs Rentabilidad</span>
+                        </div>
+                        <div style="height: 160px;">
+                            <canvas id="inversionBarChart"></canvas>
+                        </div>
                     </div>
-                    <div class="line-chart-container">
-                        <canvas id="rentabilidadLineChart"></canvas>
+
+                    <!-- Rentabilidad Media por Semana -->
+                    <div class="chart-card" style="margin-bottom: 0;">
+                        <div class="chart-card-header">
+                            <h2>Rentabilidad Media por Semana</h2>
+                            <span>Últimas 9 semanas</span>
+                        </div>
+                        <div class="line-chart-container">
+                            <canvas id="rentabilidadLineChart"></canvas>
+                        </div>
                     </div>
                 </div>
 
@@ -1043,24 +1152,24 @@ $estadoFases = [
             });
         });
 
-        // Gráfico de barras de capital (entrada/salida) - igual que admin
+        // Gráfico de barras de aportaciones (Capital vs Beneficio) - últimas 4 aportaciones
         const ctxBar = document.getElementById('capitalBarChart');
         if (ctxBar) {
             new Chart(ctxBar.getContext('2d'), {
                 type: 'bar',
                 data: {
-                    labels: <?php echo json_encode(array_column($capitalSemanal, 'label')); ?>,
+                    labels: <?php echo json_encode(array_column($aportacionesGrafico, 'label')); ?>,
                     datasets: [
                         {
-                            label: 'Entrada',
-                            data: <?php echo json_encode(array_column($capitalSemanal, 'entrada')); ?>,
-                            backgroundColor: '#22c55e',
+                            label: 'Capital',
+                            data: <?php echo json_encode(array_column($aportacionesGrafico, 'capital')); ?>,
+                            backgroundColor: '#3b82f6',
                             borderWidth: 0
                         },
                         {
-                            label: 'Salida',
-                            data: <?php echo json_encode(array_column($capitalSemanal, 'salida')); ?>,
-                            backgroundColor: '#ef4444',
+                            label: 'Beneficio',
+                            data: <?php echo json_encode(array_column($aportacionesGrafico, 'beneficio')); ?>,
+                            backgroundColor: '#22c55e',
                             borderWidth: 0
                         }
                     ]
@@ -1084,11 +1193,79 @@ $estadoFases = [
                     scales: {
                         x: {
                             grid: { display: false },
-                            ticks: { color: '#888', font: { size: 9 } }
+                            ticks: { color: '#888', font: { size: 8 } }
                         },
                         y: {
                             display: false,
                             beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico de Inversión (todas las inversiones: capital vs rentabilidad)
+        const ctxInversion = document.getElementById('inversionBarChart');
+        if (ctxInversion) {
+            new Chart(ctxInversion.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: <?php echo json_encode(array_column($inversionesGrafico, 'label')); ?>,
+                    datasets: [
+                        {
+                            label: 'Capital',
+                            data: <?php echo json_encode(array_column($inversionesGrafico, 'capital')); ?>,
+                            backgroundColor: '#3b82f6',
+                            borderWidth: 0
+                        },
+                        {
+                            label: 'Rentabilidad',
+                            data: <?php echo json_encode(array_column($inversionesGrafico, 'rentabilidad')); ?>,
+                            backgroundColor: '#22c55e',
+                            borderWidth: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: '#888',
+                                usePointStyle: true,
+                                padding: 15,
+                                font: { size: 10 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#888', font: { size: 10 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: {
+                                color: '#888',
+                                callback: function(value) {
+                                    if (value >= 1000) {
+                                        return (value / 1000) + 'k€';
+                                    }
+                                    return value + '€';
+                                }
+                            }
                         }
                     }
                 }
