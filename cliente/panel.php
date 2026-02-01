@@ -86,18 +86,41 @@ $rentabilidadTotalEuros = $rentabilidadFijaEuros + $rentabilidadVariableEuros;
 
 // Tasas de rentabilidad configuradas (anual)
 $tasaFijaAnual = floatval(getConfig('rentabilidad_fija', 5));
-$tasaVariablePrevistaAdmin = floatval(getConfig('rentabilidad_variable_actual', 14.8));
 
 // Comisiones sobre rentabilidad variable
 $comisionPorcentajeVariable = floatval(getConfig('comision_porcentaje_variable', 15));
 $comisionFijaVariable = floatval(getConfig('comision_fija_variable', 0));
 
+// Calcular rentabilidad variable PREVISTA del admin (de vehículos activos)
+// Mismo cálculo que en admin/index.php
+$dbGlobal = getDB();
+
+// Rentabilidad prevista total (de vehículos activos NO vendidos)
+$rentabilidadPrevistaVehiculos = $dbGlobal->query("
+    SELECT COALESCE(SUM(valor_venta_previsto - precio_compra - prevision_gastos), 0) as rentabilidad
+    FROM vehiculos
+    WHERE estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
+")->fetch();
+$rentabilidadPrevistaTotal = floatval($rentabilidadPrevistaVehiculos['rentabilidad']);
+
+// Inversión total en vehículos activos
+$inversionVehiculosActivos = $dbGlobal->query("
+    SELECT COALESCE(SUM(precio_compra + prevision_gastos), 0) as total
+    FROM vehiculos
+    WHERE estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
+")->fetch();
+$inversionActivosTotal = floatval($inversionVehiculosActivos['total']);
+
+// Calcular % rentabilidad prevista del admin
+$porcentajeRentabilidadPrevistaAdmin = $inversionActivosTotal > 0
+    ? ($rentabilidadPrevistaTotal / $inversionActivosTotal) * 100
+    : 0;
+
 // Rentabilidad variable PREVISTA neta para cliente (admin - comisión)
 // Si el resultado es negativo, mostrar 0
-$tasaVariablePrevista = max(0, $tasaVariablePrevistaAdmin - $comisionPorcentajeVariable);
+$tasaVariablePrevista = max(0, $porcentajeRentabilidadPrevistaAdmin - $comisionPorcentajeVariable);
 
 // Calcular rentabilidad OBTENIDA del admin (de vehículos vendidos)
-$dbGlobal = getDB();
 $inversionVehiculosVendidos = $dbGlobal->query("
     SELECT COALESCE(SUM(precio_compra + gastos), 0) as inversion,
            COALESCE(SUM(precio_venta_real - precio_compra - gastos), 0) as rentabilidad
@@ -109,7 +132,7 @@ $rentabilidadObtenidaVehiculos = floatval($inversionVehiculosVendidos['rentabili
 $porcentajeRentabilidadObtenidaAdmin = $inversionVendidos > 0 ? ($rentabilidadObtenidaVehiculos / $inversionVendidos) * 100 : 0;
 
 // Rentabilidad variable OBTENIDA neta para cliente (admin - comisión), pero si es 0 en admin, es 0
-$tasaVariableObtenida = $porcentajeRentabilidadObtenidaAdmin > 0 ? ($porcentajeRentabilidadObtenidaAdmin - $comisionPorcentajeVariable) : 0;
+$tasaVariableObtenida = $porcentajeRentabilidadObtenidaAdmin > 0 ? max(0, $porcentajeRentabilidadObtenidaAdmin - $comisionPorcentajeVariable) : 0;
 
 // Calcular rentabilidad fija diaria: (% anual / 365)
 $tasaFijaDiaria = $tasaFijaAnual / 365;
