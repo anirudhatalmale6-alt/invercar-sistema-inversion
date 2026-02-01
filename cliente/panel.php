@@ -252,155 +252,10 @@ $estadoFases = [
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Panel - InverCar</title>
     <link rel="icon" type="image/svg+xml" href="../assets/images/favicon.svg">
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/cliente.css">
     <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Raleway', sans-serif; }
-
-        .panel-header {
-            background: var(--secondary-color);
-            padding: 20px 0;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .panel-header .container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .panel-nav {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-
-        .panel-nav a {
-            color: var(--text-muted);
-            transition: color 0.3s;
-        }
-
-        .panel-nav a:hover {
-            color: var(--primary-color);
-        }
-
-        .panel-content {
-            padding: 40px 0;
-            min-height: calc(100vh - 80px);
-        }
-
-        .welcome-section {
-            margin-bottom: 40px;
-        }
-
-        .welcome-section h1 {
-            font-size: 1.8rem;
-            margin-bottom: 5px;
-        }
-
-        .welcome-section p {
-            color: var(--text-muted);
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-
-        .info-card {
-            background: var(--card-bg);
-            border-radius: 0;
-            padding: 25px;
-            border: 1px solid var(--border-color);
-        }
-
-        .info-card h3 {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-
-        .info-card .value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-
-        .info-card .label {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-top: 5px;
-        }
-
-        .info-card.highlight {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-            border: none;
-        }
-
-        .info-card.highlight h3,
-        .info-card.highlight .value,
-        .info-card.highlight .label {
-            color: white;
-        }
-
-        .chart-section {
-            background: var(--card-bg);
-            border-radius: 0;
-            padding: 30px;
-            border: 1px solid var(--border-color);
-            margin-bottom: 30px;
-        }
-
-        .chart-section h2 {
-            margin-bottom: 25px;
-            font-size: 1.3rem;
-        }
-
-        .chart-container {
-            display: flex;
-            align-items: flex-end;
-            gap: 15px;
-            height: 200px;
-            padding: 20px 0;
-        }
-
-        .chart-bar {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .chart-bar .bar {
-            width: 100%;
-            max-width: 50px;
-            background: linear-gradient(to top, var(--primary-color), var(--primary-dark));
-            border-radius: 0;
-            min-height: 20px;
-            transition: height 0.5s ease;
-        }
-
-        .chart-bar .bar-value {
-            font-size: 0.75rem;
-            color: var(--primary-color);
-            font-weight: 600;
-        }
-
-        .chart-bar .bar-label {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-        }
-
-        .chart-bar.empty .bar {
-            background: var(--border-color);
-        }
-
         .tipo-badge {
             display: inline-block;
             padding: 5px 15px;
@@ -870,24 +725,22 @@ $estadoFases = [
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="panel-header">
-        <div class="container">
-            <a href="../index.php" class="logo"><img src="../assets/images/logo-invercar.png" alt="InverCar" style="height: 80px; max-width: 220px;"></a>
-            <nav class="panel-nav">
-                <span style="color: var(--text-muted);">Hola, <?php echo escape($cliente['nombre']); ?></span>
-                <a href="logout.php" class="btn btn-outline" style="padding: 8px 15px;">Cerrar sesión</a>
-            </nav>
-        </div>
-    </header>
+    <div class="cliente-wrapper">
+        <?php include __DIR__ . '/includes/sidebar.php'; ?>
 
-    <!-- Panel Content -->
-    <div class="panel-content">
-        <div class="container">
-            <!-- Welcome -->
-            <div class="welcome-section">
-                <h1>Mi Panel de Inversión</h1>
-                <p>Bienvenido a tu área personal. Aquí puedes ver el estado de tu inversión.</p>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="top-bar">
+                <div class="page-title">
+                    <h1>Mi Panel de Inversión</h1>
+                    <p>Bienvenido a tu área personal</p>
+                </div>
+                <div class="user-menu">
+                    <div class="user-info">
+                        <div class="name"><?php echo escape($cliente['nombre']); ?></div>
+                    </div>
+                    <div class="user-avatar"><?php echo strtoupper(substr($cliente['nombre'], 0, 1)); ?></div>
+                </div>
             </div>
 
             <!-- Tarjetas de Rentabilidad (Arriba) - Igual que Admin -->
@@ -1151,53 +1004,8 @@ $estadoFases = [
                 </div>
             </div>
 
-            <!-- Profile Section -->
-            <div class="profile-section">
-                <h2>Mis Datos</h2>
-                <div class="profile-grid">
-                    <div class="profile-item">
-                        Nombre completo
-                        <strong><?php echo escape($cliente['nombre'] . ' ' . $cliente['apellidos']); ?></strong>
-                    </div>
-                    <div class="profile-item">
-                        Email
-                        <strong><?php echo escape($cliente['email']); ?></strong>
-                    </div>
-                    <div class="profile-item">
-                        DNI/NIE
-                        <strong><?php echo escape($cliente['dni']); ?></strong>
-                    </div>
-                    <div class="profile-item">
-                        Teléfono
-                        <strong><?php echo escape($cliente['telefono']); ?></strong>
-                    </div>
-                    <div class="profile-item">
-                        Dirección
-                        <strong><?php echo escape($cliente['direccion']); ?></strong>
-                    </div>
-                    <div class="profile-item">
-                        Localidad
-                        <strong><?php echo escape($cliente['codigo_postal'] . ' ' . $cliente['poblacion'] . ', ' . $cliente['provincia']); ?></strong>
-                    </div>
-                    <div class="profile-item">
-                        País
-                        <strong><?php echo escape($cliente['pais']); ?></strong>
-                    </div>
-                    <div class="profile-item">
-                        Cliente desde
-                        <strong><?php echo date('d/m/Y', strtotime($cliente['created_at'])); ?></strong>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </main>
     </div>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; <?php echo date('Y'); ?> InverCar. Todos los derechos reservados.</p>
-        </div>
-    </footer>
 
     <script>
         // Photo gallery navigation

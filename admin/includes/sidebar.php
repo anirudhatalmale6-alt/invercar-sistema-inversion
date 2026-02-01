@@ -20,10 +20,18 @@ $icons = [
     'chevron' => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
 ];
 
-// Get unread messages count
+// Get unread messages count (contactos)
 if (!isset($mensajesNoLeidos)) {
     $db = getDB();
     $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE leido = 0")->fetch()['total'];
+}
+
+// Get unread client messages count
+$mensajesClientesNoLeidos = 0;
+try {
+    $mensajesClientesNoLeidos = $db->query("SELECT COUNT(*) as total FROM mensajes_cliente WHERE remitente = 'cliente' AND leido = 0")->fetch()['total'];
+} catch (Exception $e) {
+    // Table may not exist yet
 }
 ?>
 <aside class="sidebar" id="sidebar">
@@ -43,8 +51,11 @@ if (!isset($mensajesNoLeidos)) {
         <li><a href="vehiculos.php" <?php echo $currentPage === 'vehiculos.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['vehiculos']; ?></span><span class="menu-text">Vehículos</span></a></li>
         <li><a href="apuntes.php" <?php echo $currentPage === 'apuntes.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['apuntes']; ?></span><span class="menu-text">Apuntes</span></a></li>
 
+        <li class="sidebar-section"><span class="section-text">Comunicación</span></li>
+        <li><a href="mensajes-clientes.php" <?php echo $currentPage === 'mensajes-clientes.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['mensajes']; ?></span><span class="menu-text">Chat Clientes</span> <?php if($mensajesClientesNoLeidos > 0): ?><span class="badge badge-danger menu-badge"><?php echo $mensajesClientesNoLeidos; ?></span><?php endif; ?></a></li>
+        <li><a href="contactos.php" <?php echo $currentPage === 'contactos.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['mensajes']; ?></span><span class="menu-text">Contactos Web</span> <?php if($mensajesNoLeidos > 0): ?><span class="badge badge-danger menu-badge"><?php echo $mensajesNoLeidos; ?></span><?php endif; ?></a></li>
+
         <li class="sidebar-section"><span class="section-text">Sistema</span></li>
-        <li><a href="contactos.php" <?php echo $currentPage === 'contactos.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['mensajes']; ?></span><span class="menu-text">Mensajes</span> <?php if($mensajesNoLeidos > 0): ?><span class="badge badge-danger menu-badge"><?php echo $mensajesNoLeidos; ?></span><?php endif; ?></a></li>
         <li><a href="configuracion.php" <?php echo $currentPage === 'configuracion.php' ? 'class="active"' : ''; ?>><span class="icon"><?php echo $icons['config']; ?></span><span class="menu-text">Configuración</span></a></li>
     </ul>
 
