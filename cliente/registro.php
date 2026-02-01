@@ -205,8 +205,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                minlength="8" placeholder="Repite la contraseña">
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">Crear cuenta</button>
+                    <button type="submit" class="btn btn-primary" style="width: 100%;" id="submitBtn">
+                        <span class="btn-text">Crear cuenta</span>
+                        <span class="btn-loading" style="display: none;">
+                            <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="animation: spin 1s linear infinite;">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="60 30"/>
+                            </svg>
+                            Procesando...
+                        </span>
+                    </button>
                 </form>
+
+                <style>
+                    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                    .spinner { display: inline-block; vertical-align: middle; margin-right: 8px; }
+                    .btn-loading { display: flex; align-items: center; justify-content: center; }
+                </style>
 
                 <div class="auth-footer">
                     <p>¿Ya tienes cuenta? <a href="login.php">Inicia sesión</a></p>
@@ -243,6 +257,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     strengthBar.classList.add('strength-strong');
                 }
+            });
+        }
+
+        // Loading indicator on form submit
+        const form = document.querySelector('form');
+        const submitBtn = document.getElementById('submitBtn');
+        if (form && submitBtn) {
+            form.addEventListener('submit', function() {
+                submitBtn.disabled = true;
+                submitBtn.querySelector('.btn-text').style.display = 'none';
+                submitBtn.querySelector('.btn-loading').style.display = 'flex';
             });
         }
     </script>

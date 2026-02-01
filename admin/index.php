@@ -227,19 +227,21 @@ for ($i = 8; $i >= 0; $i--) {
         $anio--;
     }
 
-    // Buscar datos en histórico o simular
+    // Por defecto: Fija siempre tiene valor configurado, Variable y Prevista son 0 para semanas sin datos históricos
     $rentFija = $rentabilidadFija;
-    $rentVariable = $rentabilidadVariableActual * (0.8 + (rand(0, 40) / 100)); // Simular variación
-    $rentVariablePrevista = $porcentajeRentabilidadPrevista; // Valor por defecto
+    $rentVariable = 0; // Variable obtenida es 0 hasta que se vendan vehículos
+    $rentVariablePrevista = 0; // Prevista es 0 para semanas pasadas sin datos
 
+    // Buscar datos en histórico
+    $tieneHistorico = false;
     foreach ($rentabilidadHistorico as $hist) {
         if ($hist['semana'] == $semNum && $hist['anio'] == $anio) {
+            $tieneHistorico = true;
             if ($hist['tipo'] == 'fija') {
                 $rentFija = floatval($hist['porcentaje']);
             }
             if ($hist['tipo'] == 'variable') {
                 $rentVariable = floatval($hist['porcentaje']);
-                // Usar porcentaje_previsto del histórico si existe
                 if (isset($hist['porcentaje_previsto']) && $hist['porcentaje_previsto'] !== null) {
                     $rentVariablePrevista = floatval($hist['porcentaje_previsto']);
                 }
@@ -247,13 +249,14 @@ for ($i = 8; $i >= 0; $i--) {
         }
     }
 
-    $mediaRent = ($rentFija + $rentVariable) / 2;
-
-    // Si no hay datos históricos de prevista, añadir ligera variación para visualización
-    if ($rentVariablePrevista == $porcentajeRentabilidadPrevista && $i > 0) {
-        $variacionPrevista = (rand(-20, 20) / 10); // variación de -2% a +2%
-        $rentVariablePrevista = max(0, $porcentajeRentabilidadPrevista + $variacionPrevista);
+    // Para la semana actual (i=0), usar los valores calculados
+    if ($i === 0) {
+        $rentVariablePrevista = $porcentajeRentabilidadPrevista;
+        // VariableObtenida se calcula de vehículos vendidos - si hay vehículos vendidos, usar ese porcentaje
+        $rentVariable = $porcentajeRentabilidadObtenida;
     }
+
+    $mediaRent = ($rentFija + $rentVariable) / 2;
 
     $semanasGrafico[] = [
         'semana' => $semNum,

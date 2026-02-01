@@ -178,6 +178,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $passwordHash = password_hash($passwordTemp, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
             $db->prepare("UPDATE clientes SET password = ? WHERE id = ?")->execute([$passwordHash, $id]);
             $exito = "Contraseña reseteada. Nueva contraseña temporal: $passwordTemp";
+        } elseif ($action === 'toggle_verificado') {
+            $id = intval($_POST['id'] ?? 0);
+            $verificado = intval($_POST['verificado'] ?? 0);
+            $db->prepare("UPDATE clientes SET email_verificado = ? WHERE id = ?")->execute([$verificado, $id]);
+            $exito = $verificado ? 'Email marcado como verificado.' : 'Email marcado como no verificado.';
         }
     }
 }
@@ -484,9 +489,15 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             <td><?php echo escape($c['email']); ?></td>
                                             <td style="color: var(--text-muted);"><?php echo $c['capital_previsto'] > 0 ? formatMoney($c['capital_previsto']) : '-'; ?></td>
                                             <td>
-                                                <span class="badge <?php echo $c['email_verificado'] ? 'badge-success' : 'badge-warning'; ?>">
-                                                    <?php echo $c['email_verificado'] ? 'Verificado' : 'No verificado'; ?>
-                                                </span>
+                                                <form method="POST" style="display: inline;">
+                                                    <?php echo csrfField(); ?>
+                                                    <input type="hidden" name="action" value="toggle_verificado">
+                                                    <input type="hidden" name="id" value="<?php echo $c['id']; ?>">
+                                                    <input type="hidden" name="verificado" value="<?php echo $c['email_verificado'] ? 0 : 1; ?>">
+                                                    <button type="submit" class="badge <?php echo $c['email_verificado'] ? 'badge-success' : 'badge-warning'; ?>" style="cursor: pointer; border: none; padding: 5px 10px;" title="Clic para cambiar">
+                                                        <?php echo $c['email_verificado'] ? 'Verificado' : 'No verificado'; ?>
+                                                    </button>
+                                                </form>
                                             </td>
                                             <td><?php echo date('d/m/Y H:i', strtotime($c['created_at'])); ?></td>
                                             <td>

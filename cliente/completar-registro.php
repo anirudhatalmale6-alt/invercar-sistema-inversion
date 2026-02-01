@@ -351,9 +351,21 @@ $provincias = [
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
-                        Completar Registro
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;" id="submitBtn">
+                        <span class="btn-text">Completar Registro</span>
+                        <span class="btn-loading" style="display: none;">
+                            <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="animation: spin 1s linear infinite;">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="60 30"/>
+                            </svg>
+                            Procesando...
+                        </span>
                     </button>
+
+                    <style>
+                        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                        .spinner { display: inline-block; vertical-align: middle; margin-right: 8px; }
+                        .btn-loading { display: flex; align-items: center; justify-content: center; }
+                    </style>
                 </form>
             <?php endif; ?>
         </div>
@@ -367,6 +379,17 @@ $provincias = [
                 this.classList.add('selected');
             });
         });
+
+        // Loading indicator on form submit
+        const form = document.querySelector('form');
+        const submitBtn = document.getElementById('submitBtn');
+        if (form && submitBtn) {
+            form.addEventListener('submit', function() {
+                submitBtn.disabled = true;
+                submitBtn.querySelector('.btn-text').style.display = 'none';
+                submitBtn.querySelector('.btn-loading').style.display = 'flex';
+            });
+        }
     </script>
 </body>
 </html>

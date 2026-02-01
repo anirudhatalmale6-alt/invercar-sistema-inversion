@@ -39,7 +39,8 @@ foreach ($rentabilidad as $r) {
 }
 
 // Rentabilidad según tipo
-if ($cliente['tipo_inversion'] === 'fija') {
+$tipoInversion = $cliente['tipo_inversion'] ?? 'fija';
+if ($tipoInversion === 'fija') {
     $rentabilidadMensual = floatval(getConfig('rentabilidad_fija', 5));
 } else {
     $rentabilidadMensual = floatval(getConfig('rentabilidad_variable_actual', 14.8));
@@ -54,8 +55,7 @@ foreach ($rentabilidad as $r) {
 // Obtener vehículos activos (públicos para clientes)
 $vehiculosActivos = $db->query("
     SELECT v.id, v.referencia, v.marca, v.modelo, v.version, v.anio, v.kilometros,
-           v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra,
-           v.proveedor_id
+           v.precio_compra, v.valor_venta_previsto, v.foto, v.estado, v.fecha_compra
     FROM vehiculos v
     WHERE v.estado IN ('en_espera', 'en_preparacion', 'en_venta', 'reservado')
     AND v.publico = 1
@@ -74,20 +74,18 @@ if (!empty($vehiculosActivos)) {
     }
 }
 
-// Calcular media de días de venta por proveedor
-$mediaVentaProveedor = [];
+// Calcular media de días de venta global (no hay proveedor_id en la BD)
+$mediaVentaGlobal = 75; // Por defecto 75 días
 $stmtMedia = $db->query("
-    SELECT proveedor_id,
-           AVG(DATEDIFF(fecha_venta, fecha_compra)) as media_dias
+    SELECT AVG(DATEDIFF(fecha_venta, fecha_compra)) as media_dias
     FROM vehiculos
     WHERE estado = 'vendido'
     AND fecha_venta IS NOT NULL
     AND fecha_compra IS NOT NULL
-    AND proveedor_id IS NOT NULL
-    GROUP BY proveedor_id
 ");
-foreach ($stmtMedia->fetchAll() as $m) {
-    $mediaVentaProveedor[$m['proveedor_id']] = round($m['media_dias']);
+$mediaResult = $stmtMedia->fetch();
+if ($mediaResult && $mediaResult['media_dias']) {
+    $mediaVentaGlobal = round($mediaResult['media_dias']);
 }
 
 // Estados y fases del vehículo
@@ -594,8 +592,8 @@ $estadoFases = [
                 <div class="info-card">
                     <h3>Tipo de Inversión</h3>
                     <div class="value">
-                        <span class="tipo-badge <?php echo $cliente['tipo_inversion']; ?>">
-                            Rentabilidad <?php echo ucfirst($cliente['tipo_inversion']); ?>
+                        <span class="tipo-badge <?php echo $tipoInversion; ?>">
+                            Rentabilidad <?php echo ucfirst($tipoInversion); ?>
                         </span>
                     </div>
                     <div class="label"><?php echo formatPercent($rentabilidadMensual); ?> mensual</div>
@@ -627,11 +625,8 @@ $estadoFases = [
                         $diasDesdeCompra = $hoy->diff($fechaCompra)->days;
                     }
 
-                    // Calcular fecha prevista de venta
-                    $diasPrevistos = 75; // Por defecto
-                    if (!empty($vehiculo['proveedor_id']) && isset($mediaVentaProveedor[$vehiculo['proveedor_id']])) {
-                        $diasPrevistos = $mediaVentaProveedor[$vehiculo['proveedor_id']];
-                    }
+                    // Calcular fecha prevista de venta usando media global
+                    $diasPrevistos = $mediaVentaGlobal;
 
                     $fechaPrevista = null;
                     if (!empty($vehiculo['fecha_compra'])) {

@@ -77,19 +77,19 @@ function getEmailTemplate($nombre, $texto, $enlace, $botonTexto, $textoFinal) {
         <style>
             body { font-family: 'Raleway', Arial, sans-serif; background-color: #1a1a2e; padding: 20px; margin: 0; }
             .container { max-width: 600px; margin: 0 auto; background: #16213e; border-radius: 0; padding: 40px; border: 1px solid #d4a84b; }
-            .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(212, 168, 75, 0.3); }
+            .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(212, 168, 75, 0.3); font-size: 28px; font-weight: bold; color: #d4a84b; }
             .header img { max-width: 200px; height: auto; }
-            p { color: #e0e0e0; line-height: 1.6; }
+            p { color: #ffffff; line-height: 1.6; }
             .btn { display: inline-block; background: linear-gradient(135deg, #d4a84b 0%, #c9a227 100%); color: #1a1a2e !important; padding: 15px 30px; text-decoration: none; border-radius: 0; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
             .btn:hover { background: linear-gradient(135deg, #c9a227 0%, #d4a84b 100%); }
-            .link { color: #d4a84b; }
+            .link { color: #d4a84b; word-break: break-all; }
             .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(212, 168, 75, 0.3); color: #888; font-size: 12px; }
         </style>
     </head>
     <body>
         <div class='container'>
             <div class='header'>
-                <img src='{$logoUrl}' alt='InverCar' />
+                <img src='{$logoUrl}' alt='InverCar' onerror=\"this.style.display='none';this.parentNode.innerHTML='<span style=color:#d4a84b;font-size:28px;font-weight:bold;>INVERCAR</span>'\" />
             </div>
             <p>Hola <strong style='color: #d4a84b;'>{$nombre}</strong>,</p>
             <p>{$texto}</p>
