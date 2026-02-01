@@ -133,10 +133,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($stmt->fetch()) {
                             $error = 'Ya existe otro cliente con ese email.';
                         } else {
-                            $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=?, registro_completo=? WHERE id=?";
-                            $stmt = $db->prepare($sql);
-                            $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $registro_completo, $id]);
-                            $exito = 'Cliente actualizado correctamente.';
+                            // Verificar si se quiere cambiar la contraseña
+                            $newPassword = cleanInput($_POST['password'] ?? '');
+                            if (!empty($newPassword)) {
+                                $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
+                                $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=?, registro_completo=?, password=? WHERE id=?";
+                                $stmt = $db->prepare($sql);
+                                $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $registro_completo, $passwordHash, $id]);
+                                $exito = "Cliente actualizado correctamente. Nueva contraseña: $newPassword";
+                            } else {
+                                $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=?, registro_completo=? WHERE id=?";
+                                $stmt = $db->prepare($sql);
+                                $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $registro_completo, $id]);
+                                $exito = 'Cliente actualizado correctamente.';
+                            }
                         }
                     }
                 } catch (Exception $e) {
@@ -654,14 +664,12 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                         </div>
                     </div>
 
-                    <?php if (!$clienteEditar): ?>
                     <div class="form-group">
-                        <label>Contraseña *</label>
-                        <input type="text" name="password" placeholder="Contraseña para el cliente"
+                        <label><?php echo $clienteEditar ? 'Nueva Contraseña' : 'Contraseña *'; ?></label>
+                        <input type="text" name="password" placeholder="<?php echo $clienteEditar ? 'Dejar vacío para no cambiar' : 'Contraseña para el cliente'; ?>"
                                autocomplete="off">
-                        <small style="color: var(--text-muted);">Si lo dejas vacío se generará una automáticamente</small>
+                        <small style="color: var(--text-muted);"><?php echo $clienteEditar ? 'Solo rellena si deseas cambiar la contraseña' : 'Si lo dejas vacío se generará una automáticamente'; ?></small>
                     </div>
-                    <?php endif; ?>
 
                     <div class="form-row">
                         <div class="form-group">
