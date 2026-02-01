@@ -85,9 +85,54 @@ $tasaVariable = floatval(getConfig('rentabilidad_variable_actual', 14.8));
 $porcentajeRentFija = $capitalFija > 0 ? ($rentabilidadFijaEuros / $capitalFija) * 100 : $tasaFija;
 $porcentajeRentVariable = $capitalVariable > 0 ? ($rentabilidadVariableEuros / $capitalVariable) * 100 : $tasaVariable;
 
-// Datos para el gráfico de líneas (últimas 9 semanas)
+// Datos para gráfico de barras de capital (últimas 4 semanas) - igual que admin
 $semanaActual = (int) date('W');
 $anioActual = (int) date('Y');
+$capitalSemanal = [];
+for ($i = 3; $i >= 0; $i--) {
+    $semNum = $semanaActual - $i;
+    $anio = $anioActual;
+    if ($semNum <= 0) {
+        $semNum += 52;
+        $anio--;
+    }
+
+    // Calcular fechas de inicio y fin de la semana
+    $inicioSemana = new DateTime();
+    $inicioSemana->setISODate($anio, $semNum, 1);
+    $finSemana = clone $inicioSemana;
+    $finSemana->modify('+6 days');
+
+    $fechaInicio = $inicioSemana->format('Y-m-d');
+    $fechaFin = $finSemana->format('Y-m-d');
+
+    // Obtener entradas de capital del cliente en esa semana
+    $stmtEntrada = $db->prepare("
+        SELECT COALESCE(SUM(importe_ingresado), 0) as total
+        FROM capital
+        WHERE cliente_id = ? AND fecha_ingreso BETWEEN ? AND ? AND activo = 1
+    ");
+    $stmtEntrada->execute([$cliente['id'], $fechaInicio, $fechaFin]);
+    $entrada = floatval($stmtEntrada->fetch()['total']);
+
+    // Obtener salidas de capital del cliente en esa semana
+    $stmtSalida = $db->prepare("
+        SELECT COALESCE(SUM(importe_retirado), 0) as total
+        FROM capital
+        WHERE cliente_id = ? AND fecha_retirada BETWEEN ? AND ? AND activo = 1
+    ");
+    $stmtSalida->execute([$cliente['id'], $fechaInicio, $fechaFin]);
+    $salida = floatval($stmtSalida->fetch()['total']);
+
+    $capitalSemanal[] = [
+        'semana' => $semNum,
+        'label' => 'S' . $semNum,
+        'entrada' => $entrada,
+        'salida' => $salida
+    ];
+}
+
+// Datos para el gráfico de líneas (últimas 9 semanas)
 $semanasGrafico = [];
 
 // Obtener datos históricos de rentabilidad del cliente
@@ -818,6 +863,9 @@ $estadoFases = [
             .vehicle-grid {
                 grid-template-columns: 1fr;
             }
+            .dashboard-layout {
+                grid-template-columns: 1fr !important;
+            }
         }
     </style>
 </head>
@@ -842,17 +890,27 @@ $estadoFases = [
                 <p>Bienvenido a tu área personal. Aquí puedes ver el estado de tu inversión.</p>
             </div>
 
-            <!-- Tarjetas de Rentabilidad -->
+            <!-- Tarjetas de Rentabilidad (Arriba) - Igual que Admin -->
             <div class="rent-big-cards">
                 <div class="rent-big-card">
                     <div class="rent-big-header">
                         <div class="rent-big-icon fija">€</div>
                         <div class="rent-big-title">Rentabilidad Fija</div>
                     </div>
-                    <div class="rent-big-value fija"><?php echo formatMoney($rentabilidadFijaEuros); ?></div>
-                    <div class="rent-big-percent">▲ <?php echo number_format($tasaFija, 1, ',', '.'); ?>%</div>
-                    <div class="rent-big-capital">
-                        Capital invertido: <strong><?php echo formatMoney($capitalFija); ?></strong>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <div class="rent-big-value fija"><?php echo formatMoney($rentabilidadFijaEuros); ?></div>
+                            <div class="rent-big-percent">▲ <?php echo number_format($tasaFija, 1, ',', '.'); ?>%</div>
+                            <div class="rent-big-capital">
+                                Capital invertido: <strong><?php echo formatMoney($capitalFija); ?></strong>
+                            </div>
+                        </div>
+                        <div style="border-left: 1px solid var(--border-color); padding-left: 20px;">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px;">Entrada/Salida Capital (4 sem)</div>
+                            <div style="height: 80px;">
+                                <canvas id="capitalBarChart"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="rent-big-card">
@@ -860,58 +918,72 @@ $estadoFases = [
                         <div class="rent-big-icon variable">€</div>
                         <div class="rent-big-title">Rentabilidad Variable</div>
                     </div>
-                    <div class="rent-big-value variable"><?php echo formatMoney($rentabilidadVariableEuros); ?></div>
-                    <div class="rent-big-percent">▲ <?php echo number_format($porcentajeRentVariable, 1, ',', '.'); ?>%</div>
-                    <div class="rent-big-capital">
-                        Capital invertido: <strong><?php echo formatMoney($capitalVariable); ?></strong>
+                    <!-- Dividido en dos columnas: Prevista y Obtenida -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;">
+                        <div style="border-right: 1px solid var(--border-color); padding-right: 20px;">
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Prevista</div>
+                            <div style="font-size: 1.8rem; font-weight: 700; color: #f59e0b;"><?php echo formatMoney($rentabilidadVariableEuros); ?></div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Capital variable activo</div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: #f59e0b; margin-top: 4px;"><?php echo number_format($tasaVariable, 1, ',', '.'); ?>%</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Obtenida</div>
+                            <div style="font-size: 1.8rem; font-weight: 700; color: var(--success);"><?php echo formatMoney($rentabilidadVariableEuros); ?></div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Beneficios realizados</div>
+                            <div style="font-size: 0.9rem; font-weight: 600; color: var(--success); margin-top: 4px;"><?php echo number_format($porcentajeRentVariable, 1, ',', '.'); ?>%</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Gráfico de Rentabilidad Media por Semana -->
-            <div class="chart-card">
-                <div class="chart-card-header">
-                    <h2>Rentabilidad Media por Semana</h2>
-                    <span>Últimas 9 semanas</span>
-                </div>
-                <div class="line-chart-container">
-                    <canvas id="rentabilidadLineChart"></canvas>
-                </div>
-            </div>
-
-            <!-- Capital Card -->
-            <div class="stat-panel">
-                <div class="stat-panel-header">
-                    <div class="stat-panel-icon">€</div>
-                    <div class="stat-panel-title">Mi Capital</div>
-                </div>
-                <div class="stat-panel-value"><?php echo formatMoney($capitalTotal); ?></div>
-                <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
-                    Total invertido + rentabilidad: <strong style="color: var(--text-light);"><?php echo formatMoney($capitalTotal + $rentabilidadTotalEuros); ?></strong>
+            <!-- Layout principal: Gráfico izquierda + Capital derecha -->
+            <div class="dashboard-layout" style="display: grid; grid-template-columns: 1fr 300px; gap: 25px; margin-bottom: 25px;">
+                <!-- Columna Principal - Gráfico -->
+                <div class="chart-card" style="margin-bottom: 0;">
+                    <div class="chart-card-header">
+                        <h2>Rentabilidad Media por Semana</h2>
+                        <span>Últimas 9 semanas</span>
+                    </div>
+                    <div class="line-chart-container">
+                        <canvas id="rentabilidadLineChart"></canvas>
+                    </div>
                 </div>
 
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Por tipo de inversión</div>
-                <div class="stat-panel-row">
-                    <span class="stat-panel-label fija">Rentabilidad Fija</span>
-                    <span class="stat-panel-amount fija"><?php echo formatMoney($capitalFija); ?></span>
-                </div>
-                <div class="stat-panel-row">
-                    <span class="stat-panel-label variable">Rentabilidad Variable</span>
-                    <span class="stat-panel-amount variable"><?php echo formatMoney($capitalVariable); ?></span>
-                </div>
+                <!-- Panel Lateral - Mi Capital -->
+                <div class="stat-panel" style="margin-bottom: 0;">
+                    <div class="stat-panel-header">
+                        <div class="stat-panel-icon">€</div>
+                        <div class="stat-panel-title">Mi Capital</div>
+                    </div>
+                    <div class="stat-panel-value"><?php echo formatMoney($capitalTotal); ?></div>
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px;">
+                        <div class="stat-panel-value" style="font-size: 1.6rem; color: #3b82f6;"><?php echo formatMoney($capitalTotal + $rentabilidadTotalEuros); ?></div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Total + Rentabilidad</div>
+                    </div>
 
-                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Rentabilidad generada</div>
-                <div class="stat-panel-row">
-                    <span class="stat-panel-label fija">Rent. Fija</span>
-                    <span class="stat-panel-amount fija"><?php echo formatMoney($rentabilidadFijaEuros); ?></span>
-                </div>
-                <div class="stat-panel-row">
-                    <span class="stat-panel-label variable">Rent. Variable</span>
-                    <span class="stat-panel-amount variable"><?php echo formatMoney($rentabilidadVariableEuros); ?></span>
-                </div>
-                <div class="stat-panel-row">
-                    <span class="stat-panel-label" style="font-weight: 600; color: var(--text-light);">Total Rentabilidad</span>
-                    <span class="stat-panel-amount" style="color: var(--primary-color);"><?php echo formatMoney($rentabilidadTotalEuros); ?></span>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Por tipo de inversión</div>
+                    <div class="stat-panel-row">
+                        <span class="stat-panel-label fija">Rentabilidad Fija</span>
+                        <span class="stat-panel-amount fija"><?php echo formatMoney($capitalFija); ?></span>
+                    </div>
+                    <div class="stat-panel-row">
+                        <span class="stat-panel-label variable">Rentabilidad Variable</span>
+                        <span class="stat-panel-amount variable"><?php echo formatMoney($capitalVariable); ?></span>
+                    </div>
+
+                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin: 15px 0 8px; letter-spacing: 0.5px;">Rentabilidad generada</div>
+                    <div class="stat-panel-row">
+                        <span class="stat-panel-label fija">Rent. Fija</span>
+                        <span class="stat-panel-amount fija"><?php echo formatMoney($rentabilidadFijaEuros); ?></span>
+                    </div>
+                    <div class="stat-panel-row">
+                        <span class="stat-panel-label variable">Rent. Variable</span>
+                        <span class="stat-panel-amount variable"><?php echo formatMoney($rentabilidadVariableEuros); ?></span>
+                    </div>
+                    <div class="stat-panel-row">
+                        <span class="stat-panel-label" style="font-weight: 600; color: var(--text-light);">Total Rentabilidad</span>
+                        <span class="stat-panel-amount" style="color: var(--primary-color);"><?php echo formatMoney($rentabilidadTotalEuros); ?></span>
+                    </div>
                 </div>
             </div>
 
@@ -1162,6 +1234,58 @@ $estadoFases = [
                 });
             });
         });
+
+        // Gráfico de barras de capital (entrada/salida) - igual que admin
+        const ctxBar = document.getElementById('capitalBarChart');
+        if (ctxBar) {
+            new Chart(ctxBar.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: <?php echo json_encode(array_column($capitalSemanal, 'label')); ?>,
+                    datasets: [
+                        {
+                            label: 'Entrada',
+                            data: <?php echo json_encode(array_column($capitalSemanal, 'entrada')); ?>,
+                            backgroundColor: '#22c55e',
+                            borderWidth: 0
+                        },
+                        {
+                            label: 'Salida',
+                            data: <?php echo json_encode(array_column($capitalSemanal, 'salida')); ?>,
+                            backgroundColor: '#ef4444',
+                            borderWidth: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(20, 20, 20, 0.95)',
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#888', font: { size: 9 } }
+                        },
+                        y: {
+                            display: false,
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
 
         // Gráfico de Rentabilidad Media por Semana
         const ctx = document.getElementById('rentabilidadLineChart');
