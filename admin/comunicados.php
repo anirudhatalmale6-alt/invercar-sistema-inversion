@@ -124,10 +124,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $clientes = $db->query("SELECT id, nombre, apellidos, email FROM clientes WHERE activo = 1 AND registro_completo = 1 AND email_verificado = 1")->fetchAll();
                         break;
                     case 'fija':
-                        $clientes = $db->query("SELECT id, nombre, apellidos, email FROM clientes WHERE activo = 1 AND registro_completo = 1 AND email_verificado = 1 AND tipo_inversion = 'fija'")->fetchAll();
+                        $clientes = $db->query("SELECT DISTINCT c.id, c.nombre, c.apellidos, c.email FROM clientes c INNER JOIN capital cap ON cap.cliente_id = c.id AND cap.tipo_inversion = 'fija' AND cap.activo = 1 WHERE c.activo = 1 AND c.registro_completo = 1 AND c.email_verificado = 1")->fetchAll();
                         break;
                     case 'variable':
-                        $clientes = $db->query("SELECT id, nombre, apellidos, email FROM clientes WHERE activo = 1 AND registro_completo = 1 AND email_verificado = 1 AND tipo_inversion = 'variable'")->fetchAll();
+                        $clientes = $db->query("SELECT DISTINCT c.id, c.nombre, c.apellidos, c.email FROM clientes c INNER JOIN capital cap ON cap.cliente_id = c.id AND cap.tipo_inversion = 'variable' AND cap.activo = 1 WHERE c.activo = 1 AND c.registro_completo = 1 AND c.email_verificado = 1")->fetchAll();
                         break;
                 }
 
@@ -174,8 +174,16 @@ $plantillas = $db->query("SELECT * FROM plantillas_email ORDER BY activo DESC, t
 // Obtener historial
 $historial = $db->query("SELECT * FROM historial_envios ORDER BY created_at DESC LIMIT 50")->fetchAll();
 
-// Obtener clientes para el selector
-$clientesActivos = $db->query("SELECT id, nombre, apellidos, email, tipo_inversion FROM clientes WHERE activo = 1 AND registro_completo = 1 ORDER BY nombre")->fetchAll();
+// Obtener clientes para el selector (con tipo de inversión desde tabla capital)
+$clientesActivos = $db->query("
+    SELECT c.id, c.nombre, c.apellidos, c.email,
+           GROUP_CONCAT(DISTINCT cap.tipo_inversion) as tipos_inversion
+    FROM clientes c
+    LEFT JOIN capital cap ON cap.cliente_id = c.id AND cap.activo = 1
+    WHERE c.activo = 1 AND c.registro_completo = 1
+    GROUP BY c.id, c.nombre, c.apellidos, c.email
+    ORDER BY c.nombre
+")->fetchAll();
 
 // Editar plantilla
 $plantillaEditar = null;
@@ -413,7 +421,7 @@ function generarEmailComunicado($nombre, $asunto, $contenido) {
                                             <option value="<?php echo $c['id']; ?>">
                                                 <?php echo escape($c['nombre'] . ' ' . $c['apellidos']); ?>
                                                 (<?php echo escape($c['email']); ?>)
-                                                - <?php echo $c['tipo_inversion'] === 'fija' ? 'Fija' : 'Variable'; ?>
+                                                - <?php echo escape($c['tipos_inversion'] ?? 'Sin capital'); ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>

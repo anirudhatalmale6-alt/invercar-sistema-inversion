@@ -96,12 +96,12 @@ switch ($ordenar) {
         $orderByClause = "valor_venta_previsto ASC, fecha_compra DESC";
         break;
     case 'importe_creciente':
-        // Ordenar por importe de menor a mayor (precio_compra)
-        $orderByClause = "precio_compra ASC, fecha_compra DESC";
+        // Ordenar por venta prevista de menor a mayor
+        $orderByClause = "valor_venta_previsto ASC, fecha_compra DESC";
         break;
     case 'importe_decreciente':
-        // Ordenar por importe de mayor a menor (precio_compra)
-        $orderByClause = "precio_compra DESC, fecha_compra DESC";
+        // Ordenar por venta prevista de mayor a menor
+        $orderByClause = "valor_venta_previsto DESC, fecha_compra DESC";
         break;
     case 'fecha_compra':
     default:
