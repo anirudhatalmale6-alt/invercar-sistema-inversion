@@ -3,6 +3,7 @@
  * InverCar - Gestión de Vehículos
  */
 require_once __DIR__ . '/../includes/init.php';
+require_once INCLUDES_PATH . '/mail.php';
 
 if (!isAdminLogueado()) {
     redirect('login.php');
@@ -561,7 +562,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                 <h3><?php echo $vehiculoEditar ? 'Editar Vehículo' : 'Añadir Vehículo'; ?></h3>
                 <a href="vehiculos.php" class="modal-close">&times;</a>
             </div>
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" id="formVehiculo">
                 <div class="modal-body">
                     <?php echo csrfField(); ?>
                     <input type="hidden" name="action" value="<?php echo $vehiculoEditar ? 'editar' : 'crear'; ?>">
@@ -752,13 +753,38 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                 </div>
                 <div class="modal-footer">
                     <a href="vehiculos.php" class="btn btn-outline">Cancelar</a>
-                    <button type="submit" class="btn btn-primary"><?php echo $vehiculoEditar ? 'Guardar cambios' : 'Crear vehículo'; ?></button>
+                    <button type="submit" class="btn btn-primary" id="submitVehiculo">
+                        <span class="btn-text"><?php echo $vehiculoEditar ? 'Guardar cambios' : 'Crear vehículo'; ?></span>
+                        <span class="btn-loading" style="display: none;">
+                            <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="animation: spin 1s linear infinite;">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="60 30"/>
+                            </svg>
+                            Guardando...
+                        </span>
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
+    <style>
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spinner { display: inline-block; vertical-align: middle; margin-right: 8px; }
+        .btn-loading { display: flex; align-items: center; justify-content: center; }
+    </style>
+
     <script>
+        // Loading indicator on vehicle form submit
+        var vehiculoForm = document.getElementById('formVehiculo');
+        var submitBtn = document.getElementById('submitVehiculo');
+        if (vehiculoForm && submitBtn) {
+            vehiculoForm.addEventListener('submit', function() {
+                submitBtn.disabled = true;
+                submitBtn.querySelector('.btn-text').style.display = 'none';
+                submitBtn.querySelector('.btn-loading').style.display = 'flex';
+            });
+        }
+
         // Cerrar modal al hacer clic fuera
         document.getElementById('modalVehiculo').addEventListener('click', function(e) {
             if (e.target === this) {
