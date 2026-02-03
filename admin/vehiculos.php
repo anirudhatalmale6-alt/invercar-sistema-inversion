@@ -196,11 +196,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $exito = 'Vehículo creado correctamente.';
                         }
                     } else {
+                        // Obtener datos actuales del vehículo antes de actualizar
+                        $stmt = $db->prepare("SELECT foto, estado as estado_anterior, publico as publico_anterior FROM vehiculos WHERE id = ?");
+                        $stmt->execute([$id]);
+                        $actual = $stmt->fetch();
+                        $estadoAnterior = $actual['estado_anterior'] ?? '';
+                        $publicoAnterior = intval($actual['publico_anterior'] ?? 0);
+
                         // Obtener foto actual si no se sube nueva
                         if (!$foto) {
-                            $stmt = $db->prepare("SELECT foto FROM vehiculos WHERE id = ?");
-                            $stmt->execute([$id]);
-                            $actual = $stmt->fetch();
                             $foto = $actual['foto'] ?? null;
                         }
 
@@ -221,7 +225,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
 
-                        $exito = 'Vehículo actualizado correctamente.';
+                        // Verificar si se debe enviar notificación a clientes
+                        // Condiciones: 1) Cambio de en_estudio a en_espera y es público
+                        //              2) El vehículo se hace público ahora (antes no lo era)
+                        $estadosActivos = ['en_espera', 'en_preparacion', 'en_venta', 'reservado'];
+                        $debeNotificar = false;
+
+                        // Caso 1: Cambio de en_estudio a en_espera y es público
+                        if ($estadoAnterior === 'en_estudio' && $estado === 'en_espera' && $publico == 1) {
+                            $debeNotificar = true;
+                        }
+
+                        // Caso 2: No era público antes, ahora sí lo es, y está en estado activo
+                        if ($publicoAnterior == 0 && $publico == 1 && in_array($estado, $estadosActivos)) {
+                            $debeNotificar = true;
+                        }
+
+                        if ($debeNotificar) {
+                            // Obtener datos completos del vehículo para el email
+                            $vehiculoEmail = [
+                                'id' => $id,
+                                'marca' => $marca,
+                                'modelo' => $modelo,
+                                'version' => $version,
+                                'anio' => $anio,
+                                'kilometros' => $kilometros,
+                                'valor_venta_previsto' => $valor_venta_previsto,
+                                'fecha_compra' => $fecha_compra,
+                                'dias_previstos' => $dias_previstos,
+                                'foto' => $foto
+                            ];
+                            $resultadoNotificacion = notificarNuevoVehiculoAClientes($vehiculoEmail);
+                            $exito = "Vehículo actualizado correctamente. Notificaciones enviadas: {$resultadoNotificacion['enviados']} de {$resultadoNotificacion['total']}.";
+                        } else {
+                            $exito = 'Vehículo actualizado correctamente.';
+                        }
                     }
                 } catch (Exception $e) {
                     $error = DEBUG_MODE ? $e->getMessage() : 'Error al guardar el vehículo.';

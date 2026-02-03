@@ -52,16 +52,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $telefono = cleanInput($_POST['telefono'] ?? '');
         $capital = floatval($_POST['capital'] ?? 0);
         $tipo_inversion = cleanInput($_POST['tipo_inversion'] ?? '');
+        $tipo_liquidacion = cleanInput($_POST['tipo_liquidacion'] ?? 'trimestral');
 
         // Validaciones
         if (empty($dni) || empty($direccion) || empty($codigo_postal) ||
             empty($poblacion) || empty($provincia) || empty($telefono) ||
-            $capital <= 0 || empty($tipo_inversion)) {
+            $capital <= 0 || empty($tipo_inversion) || empty($tipo_liquidacion)) {
             $error = 'Por favor, completa todos los campos.';
         } elseif (!validarDNI($dni)) {
             $error = 'El DNI/NIE no es válido.';
         } elseif ($tipo_inversion !== 'fija') {
             $error = 'Tipo de inversión no válido.';
+        } elseif (!in_array($tipo_liquidacion, ['trimestral', 'semestral', 'anual'])) {
+            $error = 'Tipo de liquidación no válido.';
         } elseif ($capital < 1000) {
             $error = 'El capital mínimo de inversión es de 1.000€.';
         } else {
@@ -84,13 +87,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             pais = ?,
                             telefono = ?,
                             capital_previsto = ?,
+                            tipo_liquidacion = ?,
                             registro_completo = 1,
                             activo = 0
                         WHERE id = ?
                     ");
                     $stmt->execute([
                         $dni, $direccion, $codigo_postal, $poblacion, $provincia,
-                        $pais, $telefono, $capital, $clienteId
+                        $pais, $telefono, $capital, $tipo_liquidacion, $clienteId
                     ]);
 
                     // Limpiar sesión de verificación
@@ -349,6 +353,16 @@ $provincias = [
                                 <p>Anual garantizado</p>
                             </label>
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipo_liquidacion">Liquidación de intereses *</label>
+                        <select id="tipo_liquidacion" name="tipo_liquidacion" required style="width: 100%;">
+                            <option value="trimestral" <?php echo (($_POST['tipo_liquidacion'] ?? 'trimestral') === 'trimestral') ? 'selected' : ''; ?>>Trimestral (cada 3 meses)</option>
+                            <option value="semestral" <?php echo (($_POST['tipo_liquidacion'] ?? '') === 'semestral') ? 'selected' : ''; ?>>Semestral (cada 6 meses)</option>
+                            <option value="anual" <?php echo (($_POST['tipo_liquidacion'] ?? '') === 'anual') ? 'selected' : ''; ?>>Anual (cada 12 meses)</option>
+                        </select>
+                        <small style="color: var(--text-muted);">Frecuencia de pago de intereses</small>
                     </div>
 
                     <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px;" id="submitBtn">

@@ -79,7 +79,7 @@ $filtroEstado = $_GET['filtro_estado'] ?? 'todos_menos_estudio';
 
 // Ordenar vehículos
 $ordenar = $_GET['ordenar'] ?? 'fecha_compra';
-$ordenValidos = ['fecha_compra', 'dias_venta', 'venta_alta', 'venta_baja'];
+$ordenValidos = ['fecha_compra', 'dias_venta', 'venta_alta', 'venta_baja', 'importe_creciente', 'importe_decreciente'];
 if (!in_array($ordenar, $ordenValidos)) {
     $ordenar = 'fecha_compra';
 }
@@ -94,6 +94,14 @@ switch ($ordenar) {
         break;
     case 'venta_baja':
         $orderByClause = "valor_venta_previsto ASC, fecha_compra DESC";
+        break;
+    case 'importe_creciente':
+        // Ordenar por importe de menor a mayor (precio_compra)
+        $orderByClause = "precio_compra ASC, fecha_compra DESC";
+        break;
+    case 'importe_decreciente':
+        // Ordenar por importe de mayor a menor (precio_compra)
+        $orderByClause = "precio_compra DESC, fecha_compra DESC";
         break;
     case 'fecha_compra':
     default:
@@ -559,6 +567,8 @@ $ultimosClientes = $db->query("
         }
         .vehicle-investment-marker-label.prevision {
             color: var(--warning);
+            transform: translateX(-100%);
+            margin-left: -5px;
         }
         /* Phase timeline (días) */
         .phase-timeline {
@@ -985,6 +995,8 @@ $ultimosClientes = $db->query("
                                 <option value="dias_venta" <?php echo $ordenar === 'dias_venta' ? 'selected' : ''; ?>>Días Venta</option>
                                 <option value="venta_alta" <?php echo $ordenar === 'venta_alta' ? 'selected' : ''; ?>>Venta Prevista Alta</option>
                                 <option value="venta_baja" <?php echo $ordenar === 'venta_baja' ? 'selected' : ''; ?>>Venta Prevista Baja</option>
+                                <option value="importe_creciente" <?php echo $ordenar === 'importe_creciente' ? 'selected' : ''; ?>>Importe Creciente</option>
+                                <option value="importe_decreciente" <?php echo $ordenar === 'importe_decreciente' ? 'selected' : ''; ?>>Importe Decreciente</option>
                             </select>
                             <select id="filtroEstado" onchange="window.location.href='?filtro_estado=' + this.value + '&ordenar=<?php echo $ordenar; ?>'" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem;">
                                 <option value="en_estudio" <?php echo $filtroEstado === 'en_estudio' ? 'selected' : ''; ?>>En Estudio</option>

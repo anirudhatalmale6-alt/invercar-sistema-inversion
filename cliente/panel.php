@@ -168,6 +168,10 @@ $porcentajeRentFija = $capitalFija > 0 ? ($rentabilidadFijaEuros / $capitalFija)
 // Verificar si tiene inversión en variable
 $tieneInversionVariable = $capitalVariable > 0;
 
+// Calcular rentabilidad variable PREVISTA en euros
+// Basado en el capital variable invertido y el % de rentabilidad prevista
+$rentabilidadVariablePrevistaEuros = $capitalVariable * ($tasaVariablePrevista / 100);
+
 // Obtener las últimas 4 aportaciones de capital fija para el gráfico de barras
 $stmtUltimasAportaciones = $db->prepare("
     SELECT id, importe_ingresado, fecha_ingreso, rentabilidad,
@@ -279,7 +283,7 @@ for ($i = 8; $i >= 0; $i--) {
         'anio' => $anio,
         'label' => 'S' . $semNum,
         'fija' => $capitalFija > 0 ? $tasaFijaAnual : 0,
-        'variable' => $capitalVariable > 0 ? ($i === 0 ? $porcentajeRentVariable : 0) : 0,
+        'variable' => $capitalVariable > 0 ? ($i === 0 ? $tasaVariablePrevista : 0) : 0,
         'media' => $rentSemana
     ];
 }
@@ -293,7 +297,7 @@ if (!in_array($filtroEstado, $estadosValidos)) {
 
 // Ordenar vehículos
 $ordenar = $_GET['ordenar'] ?? 'fecha_compra';
-$ordenValidos = ['fecha_compra', 'dias_venta', 'venta_alta', 'venta_baja'];
+$ordenValidos = ['fecha_compra', 'dias_venta', 'venta_alta', 'venta_baja', 'importe_creciente', 'importe_decreciente'];
 if (!in_array($ordenar, $ordenValidos)) {
     $ordenar = 'fecha_compra';
 }
@@ -310,6 +314,14 @@ switch ($ordenar) {
         break;
     case 'venta_baja':
         $orderByClause = "v.valor_venta_previsto ASC, v.fecha_compra DESC";
+        break;
+    case 'importe_creciente':
+        // Ordenar por importe de menor a mayor (precio_compra)
+        $orderByClause = "v.precio_compra ASC, v.fecha_compra DESC";
+        break;
+    case 'importe_decreciente':
+        // Ordenar por importe de mayor a menor (precio_compra)
+        $orderByClause = "v.precio_compra DESC, v.fecha_compra DESC";
         break;
     case 'fecha_compra':
     default:
@@ -986,8 +998,8 @@ $estadoFases = [
                     <div class="rent-variable-columns" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;">
                         <div class="rent-variable-left" style="border-right: 1px solid var(--border-color); padding-right: 20px;">
                             <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Rentabilidad Prevista</div>
-                            <div style="font-size: 1.8rem; font-weight: 700; color: #f59e0b;"><?php echo formatMoney($rentabilidadVariableEuros); ?></div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Capital variable activo</div>
+                            <div style="font-size: 1.8rem; font-weight: 700; color: #f59e0b;"><?php echo formatMoney($rentabilidadVariablePrevistaEuros); ?></div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">Beneficio esperado</div>
                             <div style="font-size: 0.9rem; font-weight: 600; color: #f59e0b; margin-top: 4px;"><?php echo number_format($tasaVariablePrevista, 1, ',', '.'); ?>%</div>
                         </div>
                         <div>
@@ -1083,6 +1095,8 @@ $estadoFases = [
                         <option value="dias_venta" <?php echo $ordenar === 'dias_venta' ? 'selected' : ''; ?>>Días Venta</option>
                         <option value="venta_alta" <?php echo $ordenar === 'venta_alta' ? 'selected' : ''; ?>>Venta Prevista Alta</option>
                         <option value="venta_baja" <?php echo $ordenar === 'venta_baja' ? 'selected' : ''; ?>>Venta Prevista Baja</option>
+                        <option value="importe_creciente" <?php echo $ordenar === 'importe_creciente' ? 'selected' : ''; ?>>Importe Creciente</option>
+                        <option value="importe_decreciente" <?php echo $ordenar === 'importe_decreciente' ? 'selected' : ''; ?>>Importe Decreciente</option>
                     </select>
                     <select id="filtroEstado" onchange="window.location.href='panel.php?filtro_estado=' + this.value + '&ordenar=<?php echo $ordenar; ?>'" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem; border-radius: 0;">
                         <option value="todos" <?php echo $filtroEstado === 'todos' ? 'selected' : ''; ?>>Todos</option>

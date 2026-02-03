@@ -98,6 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pais = cleanInput($_POST['pais'] ?? 'España');
             $activo = intval($_POST['activo'] ?? 1);
             $registro_completo = intval($_POST['registro_completo'] ?? 0);
+            $tipo_liquidacion = cleanInput($_POST['tipo_liquidacion'] ?? 'trimestral');
+            if (!in_array($tipo_liquidacion, ['trimestral', 'semestral', 'anual'])) {
+                $tipo_liquidacion = 'trimestral';
+            }
 
             // Validaciones
             if (empty($nombre) || empty($email)) {
@@ -120,10 +124,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                             $passwordHash = password_hash($password, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
 
-                            $sql = "INSERT INTO clientes (nombre, apellidos, email, password, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, activo, registro_completo, email_verificado)
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)";
+                            $sql = "INSERT INTO clientes (nombre, apellidos, email, password, dni, telefono, direccion, codigo_postal, poblacion, provincia, pais, activo, registro_completo, email_verificado, tipo_liquidacion)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1, ?)";
                             $stmt = $db->prepare($sql);
-                            $stmt->execute([$nombre, $apellidos, $email, $passwordHash, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo]);
+                            $stmt->execute([$nombre, $apellidos, $email, $passwordHash, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $tipo_liquidacion]);
                             $exito = "Cliente creado correctamente. Contraseña: $password";
                         }
                     } else {
@@ -137,14 +141,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $newPassword = cleanInput($_POST['password'] ?? '');
                             if (!empty($newPassword)) {
                                 $passwordHash = password_hash($newPassword, PASSWORD_DEFAULT, ['cost' => HASH_COST]);
-                                $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=?, registro_completo=?, password=? WHERE id=?";
+                                $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=?, registro_completo=?, password=?, tipo_liquidacion=? WHERE id=?";
                                 $stmt = $db->prepare($sql);
-                                $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $registro_completo, $passwordHash, $id]);
+                                $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $registro_completo, $passwordHash, $tipo_liquidacion, $id]);
                                 $exito = "Cliente actualizado correctamente. Nueva contraseña: $newPassword";
                             } else {
-                                $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=?, registro_completo=? WHERE id=?";
+                                $sql = "UPDATE clientes SET nombre=?, apellidos=?, email=?, dni=?, telefono=?, direccion=?, codigo_postal=?, poblacion=?, provincia=?, pais=?, activo=?, registro_completo=?, tipo_liquidacion=? WHERE id=?";
                                 $stmt = $db->prepare($sql);
-                                $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $registro_completo, $id]);
+                                $stmt->execute([$nombre, $apellidos, $email, $dni, $telefono, $direccion, $codigo_postal, $poblacion, $provincia, $pais, $activo, $registro_completo, $tipo_liquidacion, $id]);
                                 $exito = 'Cliente actualizado correctamente.';
                             }
                         }
@@ -335,6 +339,16 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                     <span class="badge <?php echo $clienteDetalle['activo'] ? 'badge-success' : 'badge-danger'; ?>">
                                         <?php echo $clienteDetalle['activo'] ? 'Activo' : 'Inactivo'; ?>
                                     </span>
+                                </p>
+                                <p><strong>Liquidación:</strong>
+                                    <?php
+                                    $liquidacionLabels = [
+                                        'trimestral' => 'Trimestral (3 meses)',
+                                        'semestral' => 'Semestral (6 meses)',
+                                        'anual' => 'Anual (12 meses)'
+                                    ];
+                                    echo $liquidacionLabels[$clienteDetalle['tipo_liquidacion'] ?? 'trimestral'] ?? 'Trimestral';
+                                    ?>
                                 </p>
                                 <p><strong>Registrado:</strong> <?php echo date('d/m/Y H:i', strtotime($clienteDetalle['created_at'])); ?></p>
                             </div>
@@ -721,6 +735,17 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                             <select name="registro_completo">
                                 <option value="1" <?php echo ($clienteEditar['registro_completo'] ?? 0) == 1 ? 'selected' : ''; ?>>Sí</option>
                                 <option value="0" <?php echo ($clienteEditar['registro_completo'] ?? 0) == 0 ? 'selected' : ''; ?>>No</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Liquidación Intereses</label>
+                            <select name="tipo_liquidacion">
+                                <option value="trimestral" <?php echo ($clienteEditar['tipo_liquidacion'] ?? 'trimestral') === 'trimestral' ? 'selected' : ''; ?>>Trimestral (3 meses)</option>
+                                <option value="semestral" <?php echo ($clienteEditar['tipo_liquidacion'] ?? '') === 'semestral' ? 'selected' : ''; ?>>Semestral (6 meses)</option>
+                                <option value="anual" <?php echo ($clienteEditar['tipo_liquidacion'] ?? '') === 'anual' ? 'selected' : ''; ?>>Anual (12 meses)</option>
                             </select>
                         </div>
                     </div>
