@@ -175,26 +175,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                         }
 
+                        $exito = 'Vehículo creado correctamente.';
+
                         // Notificar a clientes si el vehículo es público y está en un estado activo
                         $estadosActivos = ['en_espera', 'en_preparacion', 'en_venta', 'reservado'];
                         if ($publico == 1 && in_array($estado, $estadosActivos)) {
-                            // Obtener datos completos del vehículo para el email
-                            $vehiculoEmail = [
-                                'id' => $vehiculoId,
-                                'marca' => $marca,
-                                'modelo' => $modelo,
-                                'version' => $version,
-                                'anio' => $anio,
-                                'kilometros' => $kilometros,
-                                'valor_venta_previsto' => $valor_venta_previsto,
-                                'fecha_compra' => $fecha_compra,
-                                'dias_previstos' => $dias_previstos,
-                                'foto' => $foto
-                            ];
-                            $resultadoNotificacion = notificarNuevoVehiculoAClientes($vehiculoEmail);
-                            $exito = "Vehículo creado correctamente. Notificaciones enviadas: {$resultadoNotificacion['enviados']} de {$resultadoNotificacion['total']}.";
-                        } else {
-                            $exito = 'Vehículo creado correctamente.';
+                            try {
+                                @set_time_limit(300);
+                                $vehiculoEmail = [
+                                    'id' => $vehiculoId,
+                                    'marca' => $marca,
+                                    'modelo' => $modelo,
+                                    'version' => $version,
+                                    'anio' => $anio,
+                                    'kilometros' => $kilometros,
+                                    'valor_venta_previsto' => $valor_venta_previsto,
+                                    'fecha_compra' => $fecha_compra,
+                                    'dias_previstos' => $dias_previstos,
+                                    'foto' => $foto
+                                ];
+                                $resultadoNotificacion = notificarNuevoVehiculoAClientes($vehiculoEmail);
+                                $exito .= " Notificaciones enviadas: {$resultadoNotificacion['enviados']} de {$resultadoNotificacion['total']}.";
+                            } catch (Exception $emailError) {
+                                $exito .= ' (Error al enviar notificaciones por email)';
+                            }
                         }
                     } else {
                         // Obtener datos actuales del vehículo antes de actualizar
@@ -242,24 +246,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $debeNotificar = true;
                         }
 
+                        $exito = 'Vehículo actualizado correctamente.';
+
                         if ($debeNotificar) {
-                            // Obtener datos completos del vehículo para el email
-                            $vehiculoEmail = [
-                                'id' => $id,
-                                'marca' => $marca,
-                                'modelo' => $modelo,
-                                'version' => $version,
-                                'anio' => $anio,
-                                'kilometros' => $kilometros,
-                                'valor_venta_previsto' => $valor_venta_previsto,
-                                'fecha_compra' => $fecha_compra,
-                                'dias_previstos' => $dias_previstos,
-                                'foto' => $foto
-                            ];
-                            $resultadoNotificacion = notificarNuevoVehiculoAClientes($vehiculoEmail);
-                            $exito = "Vehículo actualizado correctamente. Notificaciones enviadas: {$resultadoNotificacion['enviados']} de {$resultadoNotificacion['total']}.";
-                        } else {
-                            $exito = 'Vehículo actualizado correctamente.';
+                            try {
+                                @set_time_limit(300);
+                                $vehiculoEmail = [
+                                    'id' => $id,
+                                    'marca' => $marca,
+                                    'modelo' => $modelo,
+                                    'version' => $version,
+                                    'anio' => $anio,
+                                    'kilometros' => $kilometros,
+                                    'valor_venta_previsto' => $valor_venta_previsto,
+                                    'fecha_compra' => $fecha_compra,
+                                    'dias_previstos' => $dias_previstos,
+                                    'foto' => $foto
+                                ];
+                                $resultadoNotificacion = notificarNuevoVehiculoAClientes($vehiculoEmail);
+                                $exito .= " Notificaciones enviadas: {$resultadoNotificacion['enviados']} de {$resultadoNotificacion['total']}.";
+                            } catch (Exception $emailError) {
+                                $exito .= ' (Error al enviar notificaciones por email)';
+                            }
                         }
                     }
                 } catch (Exception $e) {

@@ -122,8 +122,8 @@ function enviarEmailSMTP($destinatario, $asunto, $mensajeHtml) {
     $errno = 0;
     $errstr = '';
 
-    // Conectar al servidor SMTP con SSL
-    $socket = @stream_socket_client("$host:$port", $errno, $errstr, 30);
+    // Conectar al servidor SMTP con SSL (timeout 10s para no bloquear)
+    $socket = @stream_socket_client("$host:$port", $errno, $errstr, 10);
 
     if (!$socket) {
         if (DEBUG_MODE) {
