@@ -112,8 +112,8 @@ function getEmailTemplate($nombre, $texto, $enlace, $botonTexto, $textoFinal) {
  * Enviar email usando SMTP con SSL (puerto 465)
  */
 function enviarEmailSMTP($destinatario, $asunto, $mensajeHtml) {
-    $host = 'ssl://' . SMTP_HOST;
-    $port = 465; // Puerto SSL
+    $smtpHost = SMTP_HOST;
+    $port = defined('SMTP_PORT') ? SMTP_PORT : 587;
     $username = SMTP_USER;
     $password = SMTP_PASS;
     $from = SMTP_FROM;
@@ -122,20 +122,25 @@ function enviarEmailSMTP($destinatario, $asunto, $mensajeHtml) {
     $errno = 0;
     $errstr = '';
 
-    // Conectar al servidor SMTP con SSL (timeout 10s para no bloquear)
-    $socket = @stream_socket_client("$host:$port", $errno, $errstr, 10);
+    // Puerto 465 = SSL directo, Puerto 587 = STARTTLS
+    if ($port == 465) {
+        $host = 'ssl://' . $smtpHost;
+    } else {
+        $host = $smtpHost;
+    }
+
+    // Conectar al servidor SMTP (timeout 5s)
+    $socket = @stream_socket_client("$host:$port", $errno, $errstr, 5);
 
     if (!$socket) {
-        if (DEBUG_MODE) {
-            error_log("SMTP Error: No se pudo conectar a $host:$port - $errstr ($errno)");
-        }
+        error_log("SMTP Error: No se pudo conectar a $host:$port - $errstr ($errno)");
         return false;
     }
 
     // Función para leer respuesta
     $getResponse = function() use ($socket) {
         $response = '';
-        stream_set_timeout($socket, 10);
+        stream_set_timeout($socket, 5);
         while ($line = fgets($socket, 515)) {
             $response .= $line;
             if (substr($line, 3, 1) == ' ' || substr($line, 3, 1) == "\r") break;
@@ -147,8 +152,8 @@ function enviarEmailSMTP($destinatario, $asunto, $mensajeHtml) {
     $sendCommand = function($command, $expectedCode = null) use ($socket, $getResponse) {
         fwrite($socket, $command . "\r\n");
         $response = $getResponse();
-        if (DEBUG_MODE && $expectedCode && substr($response, 0, 3) != $expectedCode) {
-            error_log("SMTP Command: $command");
+        if ($expectedCode && substr($response, 0, 3) != $expectedCode) {
+            error_log("SMTP Command: " . (strpos($command, 'AUTH') !== false || strlen($command) > 100 ? substr($command, 0, 30) . '...' : $command));
             error_log("SMTP Response: $response");
         }
         return $response;
@@ -165,6 +170,24 @@ function enviarEmailSMTP($destinatario, $asunto, $mensajeHtml) {
         $response = $sendCommand("EHLO " . gethostname(), '250');
         if (substr($response, 0, 3) != '250') {
             throw new Exception("EHLO failed: $response");
+        }
+
+        // STARTTLS para puerto 587
+        if ($port == 587) {
+            $response = $sendCommand("STARTTLS", '220');
+            if (substr($response, 0, 3) != '220') {
+                throw new Exception("STARTTLS failed: $response");
+            }
+            // Activar TLS
+            $crypto = stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            if (!$crypto) {
+                throw new Exception("TLS encryption failed");
+            }
+            // Re-enviar EHLO después de TLS
+            $response = $sendCommand("EHLO " . gethostname(), '250');
+            if (substr($response, 0, 3) != '250') {
+                throw new Exception("EHLO after TLS failed: $response");
+            }
         }
 
         // AUTH LOGIN
@@ -226,9 +249,7 @@ function enviarEmailSMTP($destinatario, $asunto, $mensajeHtml) {
         return true;
 
     } catch (Exception $e) {
-        if (DEBUG_MODE) {
-            error_log("SMTP Exception: " . $e->getMessage());
-        }
+        error_log("SMTP Exception: " . $e->getMessage());
         @fclose($socket);
         return false;
     }
@@ -238,14 +259,18 @@ function enviarEmailSMTP($destinatario, $asunto, $mensajeHtml) {
  * Enviar email genérico (intenta SMTP primero, luego mail())
  */
 function enviarEmail($destinatario, $asunto, $mensajeHtml) {
-    // Intentar primero con SMTP SSL
+    error_log("InverCar Email: Enviando a $destinatario - Asunto: $asunto");
+
+    // Intentar primero con SMTP
     $enviado = enviarEmailSMTP($destinatario, $asunto, $mensajeHtml);
 
+    if ($enviado) {
+        error_log("InverCar Email: OK enviado via SMTP a $destinatario");
+        return true;
+    }
+
     // Si falla SMTP, intentar con mail() nativo
-    if (!$enviado) {
-        if (DEBUG_MODE) {
-            error_log("SMTP falló, intentando mail() nativo...");
-        }
+    error_log("InverCar Email: SMTP falló para $destinatario, intentando mail() nativo...");
 
         $headers = [
             'MIME-Version: 1.0',
