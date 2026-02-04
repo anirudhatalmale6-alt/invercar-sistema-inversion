@@ -272,18 +272,17 @@ function enviarEmail($destinatario, $asunto, $mensajeHtml) {
     // Si falla SMTP, intentar con mail() nativo
     error_log("InverCar Email: SMTP falló para $destinatario, intentando mail() nativo...");
 
-        $headers = [
-            'MIME-Version: 1.0',
-            'Content-type: text/html; charset=UTF-8',
-            'From: ' . SMTP_FROM_NAME . ' <' . SMTP_FROM . '>',
-            'Reply-To: ' . SMTP_FROM,
-            'X-Mailer: PHP/' . phpversion()
-        ];
-        $enviado = @mail($destinatario, $asunto, $mensajeHtml, implode("\r\n", $headers));
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-type: text/html; charset=UTF-8',
+        'From: ' . SMTP_FROM_NAME . ' <' . SMTP_FROM . '>',
+        'Reply-To: ' . SMTP_FROM,
+        'X-Mailer: PHP/' . phpversion()
+    ];
+    $enviado = @mail($destinatario, $asunto, $mensajeHtml, implode("\r\n", $headers));
 
-        if (!$enviado && DEBUG_MODE) {
-            error_log("mail() nativo también falló para: $destinatario");
-        }
+    if (!$enviado) {
+        error_log("InverCar Email: mail() nativo también falló para: $destinatario");
     }
 
     return $enviado;
