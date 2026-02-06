@@ -342,6 +342,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
     </footer>
 
     <script>
+        // Mobile menu toggle
+        const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+        const nav = document.querySelector('.nav');
+
+        if (mobileMenuToggle && nav) {
+            mobileMenuToggle.addEventListener('click', function() {
+                nav.classList.toggle('active');
+                // Change icon
+                this.textContent = nav.classList.contains('active') ? '✕' : '☰';
+            });
+
+            // Close menu when clicking a link
+            nav.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', function() {
+                    nav.classList.remove('active');
+                    mobileMenuToggle.textContent = '☰';
+                });
+            });
+        }
+
         // Smooth scroll for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {

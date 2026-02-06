@@ -761,9 +761,47 @@ input[type="number"] {
 @media (max-width: 768px) {
     .mobile-menu-toggle {
         display: block;
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 1001;
     }
 
     .header .container {
         justify-content: space-between;
+        position: relative;
+    }
+
+    /* Mobile Menu Active State */
+    .nav.active ul {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.98);
+        padding: 20px;
+        gap: 0;
+        border-top: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .nav.active ul li {
+        width: 100%;
+        text-align: center;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(212, 168, 75, 0.1);
+    }
+
+    .nav.active ul li:last-child {
+        border-bottom: none;
+        padding-top: 20px;
+    }
+
+    .nav.active ul li:last-child a {
+        display: inline-block;
+        width: auto;
     }
 }

@@ -578,8 +578,52 @@ table tbody tr:hover {
     height: 60px;
 }
 
+/* Mobile Menu Toggle Button */
+.mobile-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 200;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    font-size: 1.4rem;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+/* Mobile overlay */
+.mobile-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 99;
+}
+
+.mobile-overlay.active {
+    display: block;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
+    .mobile-menu-toggle {
+        display: flex;
+    }
+
     .sidebar {
         transform: translateX(-100%);
     }
@@ -590,9 +634,21 @@ table tbody tr:hover {
 
     .main-content {
         margin-left: 0;
+        padding-top: 70px;
     }
 
     .main-content.sidebar-collapsed {
         margin-left: 0;
+    }
+
+    .top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .user-menu {
+        width: 100%;
+        justify-content: flex-end;
     }
 }

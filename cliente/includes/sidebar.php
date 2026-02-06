@@ -4,6 +4,11 @@
  */
 
 $currentPage = basename($_SERVER['PHP_SELF']);
+?>
+<!-- Mobile Menu Toggle -->
+<button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Abrir menú">☰</button>
+<div class="mobile-overlay" id="mobileOverlay"></div>
+<?php
 
 // SVG Icons
 $icons = [
@@ -63,18 +68,52 @@ document.addEventListener('DOMContentLoaded', function() {
     const sidebar = document.getElementById('sidebar');
     const toggle = document.getElementById('sidebarToggle');
     const mainContent = document.querySelector('.main-content');
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const mobileOverlay = document.getElementById('mobileOverlay');
 
-    // Restaurar estado del sidebar
-    const isCollapsed = localStorage.getItem('clienteSidebarCollapsed') === 'true';
-    if (isCollapsed) {
-        sidebar.classList.add('collapsed');
-        if (mainContent) mainContent.classList.add('sidebar-collapsed');
+    // Restaurar estado del sidebar (solo en desktop)
+    if (window.innerWidth > 768) {
+        const isCollapsed = localStorage.getItem('clienteSidebarCollapsed') === 'true';
+        if (isCollapsed) {
+            sidebar.classList.add('collapsed');
+            if (mainContent) mainContent.classList.add('sidebar-collapsed');
+        }
     }
 
-    toggle.addEventListener('click', function() {
-        sidebar.classList.toggle('collapsed');
-        if (mainContent) mainContent.classList.toggle('sidebar-collapsed');
-        localStorage.setItem('clienteSidebarCollapsed', sidebar.classList.contains('collapsed'));
-    });
+    // Desktop toggle
+    if (toggle) {
+        toggle.addEventListener('click', function() {
+            sidebar.classList.toggle('collapsed');
+            if (mainContent) mainContent.classList.toggle('sidebar-collapsed');
+            localStorage.setItem('clienteSidebarCollapsed', sidebar.classList.contains('collapsed'));
+        });
+    }
+
+    // Mobile menu toggle
+    if (mobileMenuToggle && mobileOverlay) {
+        mobileMenuToggle.addEventListener('click', function() {
+            sidebar.classList.toggle('mobile-open');
+            mobileOverlay.classList.toggle('active');
+            this.textContent = sidebar.classList.contains('mobile-open') ? '✕' : '☰';
+        });
+
+        // Close menu when clicking overlay
+        mobileOverlay.addEventListener('click', function() {
+            sidebar.classList.remove('mobile-open');
+            mobileOverlay.classList.remove('active');
+            mobileMenuToggle.textContent = '☰';
+        });
+
+        // Close menu when clicking a menu link (on mobile)
+        sidebar.querySelectorAll('.sidebar-menu a').forEach(function(link) {
+            link.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('mobile-open');
+                    mobileOverlay.classList.remove('active');
+                    mobileMenuToggle.textContent = '☰';
+                }
+            });
+        });
+    }
 });
 </script>
