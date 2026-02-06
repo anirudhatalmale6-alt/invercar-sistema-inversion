@@ -249,10 +249,67 @@ function enviarEmailSMTP($destinatario, $asunto, $mensajeHtml) {
         return true;
 
     } catch (Exception $e) {
-        error_log("SMTP Exception: " . $e->getMessage());
+        error_log("SMTP Exception para $destinatario: " . $e->getMessage());
         @fclose($socket);
         return false;
     }
+}
+
+/**
+ * Función de diagnóstico para verificar la conexión SMTP
+ * Usar: testSMTPConnection() desde un script PHP
+ */
+function testSMTPConnection() {
+    $smtpHost = SMTP_HOST;
+    $port = defined('SMTP_PORT') ? SMTP_PORT : 587;
+    $username = SMTP_USER;
+
+    error_log("=== TEST SMTP ===");
+    error_log("Host: $smtpHost");
+    error_log("Puerto: $port");
+    error_log("Usuario: $username");
+
+    $errno = 0;
+    $errstr = '';
+
+    if ($port == 465) {
+        $host = 'ssl://' . $smtpHost;
+    } else {
+        $host = $smtpHost;
+    }
+
+    error_log("Conectando a: $host:$port");
+
+    $socket = @stream_socket_client("$host:$port", $errno, $errstr, 10);
+
+    if (!$socket) {
+        error_log("ERROR de conexión: $errstr ($errno)");
+        return ['success' => false, 'error' => "No se pudo conectar: $errstr ($errno)"];
+    }
+
+    error_log("Conexión establecida, leyendo saludo...");
+
+    stream_set_timeout($socket, 10);
+    $response = '';
+    while ($line = fgets($socket, 515)) {
+        $response .= $line;
+        if (substr($line, 3, 1) == ' ' || substr($line, 3, 1) == "\r") break;
+    }
+    error_log("Saludo: " . trim($response));
+
+    fwrite($socket, "EHLO " . gethostname() . "\r\n");
+    $response = '';
+    while ($line = fgets($socket, 515)) {
+        $response .= $line;
+        if (substr($line, 3, 1) == ' ' || substr($line, 3, 1) == "\r") break;
+    }
+    error_log("EHLO response: " . trim($response));
+
+    fwrite($socket, "QUIT\r\n");
+    fclose($socket);
+
+    error_log("=== FIN TEST SMTP ===");
+    return ['success' => true, 'message' => 'Conexión SMTP OK'];
 }
 
 /**
@@ -261,16 +318,34 @@ function enviarEmailSMTP($destinatario, $asunto, $mensajeHtml) {
 function enviarEmail($destinatario, $asunto, $mensajeHtml) {
     error_log("InverCar Email: Enviando a $destinatario - Asunto: $asunto");
 
-    // Intentar primero con SMTP
-    $enviado = enviarEmailSMTP($destinatario, $asunto, $mensajeHtml);
-
-    if ($enviado) {
-        error_log("InverCar Email: OK enviado via SMTP a $destinatario");
-        return true;
+    // Verificar que el email sea válido
+    if (!filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
+        error_log("InverCar Email: Email inválido: $destinatario");
+        return false;
     }
 
-    // Si falla SMTP, intentar con mail() nativo
-    error_log("InverCar Email: SMTP falló para $destinatario, intentando mail() nativo...");
+    // Intentar primero con SMTP (con reintento)
+    $maxReintentos = 2;
+    $enviado = false;
+
+    for ($intento = 1; $intento <= $maxReintentos; $intento++) {
+        error_log("InverCar Email: Intento SMTP $intento de $maxReintentos para $destinatario");
+        $enviado = enviarEmailSMTP($destinatario, $asunto, $mensajeHtml);
+
+        if ($enviado) {
+            error_log("InverCar Email: OK enviado via SMTP a $destinatario (intento $intento)");
+            return true;
+        }
+
+        // Si falló y hay más intentos, esperar 1 segundo
+        if ($intento < $maxReintentos) {
+            error_log("InverCar Email: SMTP falló, esperando 1s antes del reintento...");
+            sleep(1);
+        }
+    }
+
+    // Si falla SMTP después de reintentos, intentar con mail() nativo
+    error_log("InverCar Email: SMTP falló después de $maxReintentos intentos para $destinatario, intentando mail() nativo...");
 
     $headers = [
         'MIME-Version: 1.0',
@@ -281,7 +356,9 @@ function enviarEmail($destinatario, $asunto, $mensajeHtml) {
     ];
     $enviado = @mail($destinatario, $asunto, $mensajeHtml, implode("\r\n", $headers));
 
-    if (!$enviado) {
+    if ($enviado) {
+        error_log("InverCar Email: OK enviado via mail() nativo a $destinatario");
+    } else {
         error_log("InverCar Email: mail() nativo también falló para: $destinatario");
     }
 
@@ -403,13 +480,31 @@ function notificarNuevoVehiculoAClientes($vehiculo) {
 
     $enviados = 0;
     $errores = 0;
+    $detallesErrores = [];
 
-    foreach ($clientes as $cliente) {
+    error_log("InverCar: Iniciando envío de notificación de vehículo a " . count($clientes) . " clientes");
+
+    foreach ($clientes as $index => $cliente) {
+        error_log("InverCar: Enviando email " . ($index + 1) . "/" . count($clientes) . " a " . $cliente['email']);
+
         if (enviarEmailNuevoVehiculo($cliente, $vehiculo)) {
             $enviados++;
+            error_log("InverCar: OK - Email enviado a " . $cliente['email']);
         } else {
             $errores++;
+            $detallesErrores[] = $cliente['email'];
+            error_log("InverCar: ERROR - Falló envío a " . $cliente['email']);
         }
+
+        // Pausa de 2 segundos entre emails para evitar rate limiting del servidor SMTP
+        if ($index < count($clientes) - 1) {
+            sleep(2);
+        }
+    }
+
+    error_log("InverCar: Envío completado. Enviados: $enviados, Errores: $errores");
+    if (!empty($detallesErrores)) {
+        error_log("InverCar: Emails fallidos: " . implode(', ', $detallesErrores));
     }
 
     return ['enviados' => $enviados, 'errores' => $errores, 'total' => count($clientes)];
