@@ -127,7 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $conceptoNombre = strtolower($stmtConcepto->fetchColumn() ?: '');
 
                             if (strpos($conceptoNombre, 'transporte') !== false) {
-                                $db->prepare("UPDATE vehiculos SET fecha_transporte = ? WHERE id = ? AND (fecha_transporte IS NULL OR fecha_transporte = '')")->execute([$fecha, $vehiculo_id]);
+                                // Solo actualizar si fecha_transporte es NULL o está vacía
+                                $db->prepare("UPDATE vehiculos SET fecha_transporte = ? WHERE id = ? AND (fecha_transporte IS NULL OR fecha_transporte = '0000-00-00')")->execute([$fecha, $vehiculo_id]);
                                 $mensajeExtra .= ' Se ha actualizado la fecha de transporte.';
                             }
                         }
