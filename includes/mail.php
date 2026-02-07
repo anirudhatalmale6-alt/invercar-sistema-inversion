@@ -367,72 +367,80 @@ function enviarEmail($destinatario, $asunto, $mensajeHtml) {
 
 /**
  * Enviar email de notificación de nuevo vehículo a clientes
+ * Usa imágenes embebidas (CID) para máxima compatibilidad
  */
 function enviarEmailNuevoVehiculo($cliente, $vehiculo) {
     $email = $cliente['email'];
     $nombre = $cliente['nombre'];
 
-    $asunto = "Nuevo vehículo disponible en InverCar";
+    // Sin acentos para evitar problemas de encoding
+    $asunto = "Nuevo vehiculo disponible en InverCar";
 
     // Calcular datos del vehículo
     $diasPrevistos = intval($vehiculo['dias_previstos'] ?? 75);
     $fechaCompra = !empty($vehiculo['fecha_compra']) ? new DateTime($vehiculo['fecha_compra']) : new DateTime();
     $fechaPrevista = (clone $fechaCompra)->modify("+{$diasPrevistos} days");
 
-    $fotoUrl = !empty($vehiculo['foto']) ? SITE_URL . '/' . $vehiculo['foto'] : '';
-    $logoUrl = SITE_URL . '/assets/images/logo-invercar.png';
+    // Preparar imágenes para embeber
+    $logoPath = ROOT_PATH . '/assets/images/logo-invercar.png';
+    $fotoPath = !empty($vehiculo['foto']) ? ROOT_PATH . '/' . $vehiculo['foto'] : '';
+
+    // Usar CID para imágenes embebidas
+    $logoSrc = 'cid:logo_invercar';
+    $fotoSrc = !empty($fotoPath) && file_exists($fotoPath) ? 'cid:foto_vehiculo' : '';
 
     $mensaje = "
     <html>
     <head>
+        <meta charset='UTF-8'>
         <style>
-            body { font-family: 'Raleway', Arial, sans-serif; background-color: #1a1a2e; padding: 20px; margin: 0; }
-            .container { max-width: 600px; margin: 0 auto; background: #16213e; border-radius: 0; padding: 40px; border: 1px solid #d4a84b; }
+            body { font-family: Arial, sans-serif; background-color: #1a1a2e; padding: 20px; margin: 0; }
+            .container { max-width: 600px; margin: 0 auto; background: #16213e; padding: 40px; border: 1px solid #d4a84b; }
             .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid rgba(212, 168, 75, 0.3); }
             .header img { max-width: 200px; height: auto; }
             p { color: #ffffff; line-height: 1.6; }
             .vehicle-card { background: #1a1a2e; border: 1px solid rgba(212, 168, 75, 0.3); margin: 20px 0; overflow: hidden; }
             .vehicle-status { background: #f97316; color: #fff; padding: 5px 15px; font-size: 12px; font-weight: 600; text-transform: uppercase; display: inline-block; }
-            .vehicle-image { width: 100%; height: 200px; background: #0a0a14; }
-            .vehicle-image img { width: 100%; height: 200px; object-fit: cover; }
+            .vehicle-image { width: 100%; background: #0a0a14; }
+            .vehicle-image img { width: 100%; height: auto; display: block; }
             .vehicle-body { padding: 20px; }
             .vehicle-title { font-size: 18px; font-weight: 700; color: #ffffff; margin-bottom: 5px; }
             .vehicle-subtitle { font-size: 13px; color: #888; margin-bottom: 15px; }
-            .vehicle-prices { display: table; width: 100%; }
-            .vehicle-price-item { display: table-cell; width: 50%; text-align: center; padding: 10px; }
+            .vehicle-prices { width: 100%; }
+            .vehicle-price-item { display: inline-block; width: 48%; text-align: center; padding: 10px 0; }
             .vehicle-price-label { font-size: 11px; color: #888; margin-bottom: 5px; }
             .vehicle-price-value { font-size: 16px; font-weight: 700; }
             .vehicle-price-value.venta { color: #22c55e; }
             .vehicle-price-value.fecha { color: #ffffff; }
             .vehicle-timeline { padding: 15px 20px; border-top: 1px solid rgba(212, 168, 75, 0.3); }
             .vehicle-days { font-size: 14px; font-weight: 600; color: #22c55e; }
-            .vehicle-expected { font-size: 12px; color: #888; }
-            .btn { display: inline-block; background: linear-gradient(135deg, #d4a84b 0%, #c9a227 100%); color: #1a1a2e !important; padding: 15px 30px; text-decoration: none; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+            .vehicle-expected { font-size: 12px; color: #888; float: right; }
+            .btn { display: inline-block; background: #d4a84b; color: #1a1a2e !important; padding: 15px 30px; text-decoration: none; font-weight: bold; text-transform: uppercase; }
             .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(212, 168, 75, 0.3); color: #888; font-size: 12px; }
         </style>
     </head>
     <body>
         <div class='container'>
             <div class='header'>
-                <img src='{$logoUrl}' alt='InverCar' onerror=\"this.style.display='none';this.parentNode.innerHTML='<span style=color:#d4a84b;font-size:28px;font-weight:bold;>INVERCAR</span>'\" />
+                <img src='{$logoSrc}' alt='InverCar' width='200' />
             </div>
             <p>Hola <strong style='color: #d4a84b;'>{$nombre}</strong>,</p>
-            <p>Te informamos que hay un nuevo vehículo disponible en nuestra cartera de inversión:</p>
+            <p>Te informamos que hay un nuevo vehiculo disponible en nuestra cartera de inversion:</p>
 
             <div class='vehicle-card'>
                 <div style='padding: 10px;'>
                     <span class='vehicle-status'>ESPERA</span>
                 </div>
-                " . ($fotoUrl ? "<div class='vehicle-image'><img src='{$fotoUrl}' alt='{$vehiculo['marca']} {$vehiculo['modelo']}' /></div>" : "") . "
+                " . ($fotoSrc ? "<div class='vehicle-image'><img src='{$fotoSrc}' alt='{$vehiculo['marca']} {$vehiculo['modelo']}' /></div>" : "") . "
                 <div class='vehicle-body'>
                     <div class='vehicle-title'>{$vehiculo['marca']} {$vehiculo['modelo']}</div>
                     <div class='vehicle-subtitle'>
-                        " . ($vehiculo['version'] ?? '') . " · {$vehiculo['anio']}" . ($vehiculo['kilometros'] ? " · " . number_format($vehiculo['kilometros'], 0, ',', '.') . " km" : "") . "
+                        " . ($vehiculo['version'] ?? '') . " - {$vehiculo['anio']}" . ($vehiculo['kilometros'] ? " - " . number_format($vehiculo['kilometros'], 0, ',', '.') . " km" : "") . "
                     </div>
                     <div class='vehicle-prices'>
                         <div class='vehicle-price-item'>
                             <div class='vehicle-price-label'>Venta Prevista</div>
-                            <div class='vehicle-price-value venta'>" . number_format($vehiculo['valor_venta_previsto'], 2, ',', '.') . " €</div>
+                            <div class='vehicle-price-value venta'>" . number_format($vehiculo['valor_venta_previsto'], 2, ',', '.') . " EUR</div>
                         </div>
                         <div class='vehicle-price-item'>
                             <div class='vehicle-price-label'>Fecha Prevista</div>
@@ -441,8 +449,8 @@ function enviarEmailNuevoVehiculo($cliente, $vehiculo) {
                     </div>
                 </div>
                 <div class='vehicle-timeline'>
-                    <span class='vehicle-days'>0 días</span>
-                    <span class='vehicle-expected' style='float: right;'>Previsto: {$diasPrevistos} días</span>
+                    <span class='vehicle-days'>0 dias</span>
+                    <span class='vehicle-expected'>Previsto: {$diasPrevistos} dias</span>
                 </div>
             </div>
 
@@ -451,15 +459,214 @@ function enviarEmailNuevoVehiculo($cliente, $vehiculo) {
             </p>
 
             <div class='footer'>
-                <p>Si no deseas recibir más notificaciones de nuevos vehículos, puedes desactivarlas en tu panel de configuración.</p>
-                <p>&copy; " . date('Y') . " InverCar. Todos los derechos reservados.</p>
+                <p>Si no deseas recibir mas notificaciones de nuevos vehiculos, puedes desactivarlas en tu panel de configuracion.</p>
+                <p>" . date('Y') . " InverCar. Todos los derechos reservados.</p>
             </div>
         </div>
     </body>
     </html>
     ";
 
-    return enviarEmail($email, $asunto, $mensaje);
+    // Preparar adjuntos embebidos
+    $adjuntos = [];
+    if (file_exists($logoPath)) {
+        $adjuntos[] = [
+            'path' => $logoPath,
+            'cid' => 'logo_invercar',
+            'name' => 'logo-invercar.png',
+            'type' => 'image/png'
+        ];
+    }
+    if (!empty($fotoPath) && file_exists($fotoPath)) {
+        $ext = strtolower(pathinfo($fotoPath, PATHINFO_EXTENSION));
+        $mimeType = $ext === 'png' ? 'image/png' : ($ext === 'webp' ? 'image/webp' : 'image/jpeg');
+        $adjuntos[] = [
+            'path' => $fotoPath,
+            'cid' => 'foto_vehiculo',
+            'name' => 'vehiculo.' . $ext,
+            'type' => $mimeType
+        ];
+    }
+
+    return enviarEmailConAdjuntos($email, $asunto, $mensaje, $adjuntos);
+}
+
+/**
+ * Enviar email con imágenes embebidas (MIME multipart/related)
+ */
+function enviarEmailConAdjuntos($destinatario, $asunto, $mensajeHtml, $adjuntos = []) {
+    error_log("InverCar Email: Enviando con adjuntos a $destinatario - Asunto: $asunto");
+
+    if (!filter_var($destinatario, FILTER_VALIDATE_EMAIL)) {
+        error_log("InverCar Email: Email invalido: $destinatario");
+        return false;
+    }
+
+    // Si no hay adjuntos, usar el método normal
+    if (empty($adjuntos)) {
+        return enviarEmail($destinatario, $asunto, $mensajeHtml);
+    }
+
+    // Crear email MIME multipart/related
+    $boundary = 'INVERCAR_' . md5(time() . rand());
+    $boundaryAlt = 'INVERCAR_ALT_' . md5(time() . rand());
+
+    $from = SMTP_FROM;
+    $fromName = SMTP_FROM_NAME;
+
+    // Construir mensaje MIME
+    $mensaje = "From: {$fromName} <{$from}>\r\n";
+    $mensaje .= "To: {$destinatario}\r\n";
+    $mensaje .= "Subject: {$asunto}\r\n";
+    $mensaje .= "MIME-Version: 1.0\r\n";
+    $mensaje .= "Content-Type: multipart/related; boundary=\"{$boundary}\"\r\n";
+    $mensaje .= "\r\n";
+
+    // Parte HTML
+    $mensaje .= "--{$boundary}\r\n";
+    $mensaje .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $mensaje .= "Content-Transfer-Encoding: base64\r\n";
+    $mensaje .= "\r\n";
+    $mensaje .= chunk_split(base64_encode($mensajeHtml));
+    $mensaje .= "\r\n";
+
+    // Adjuntos embebidos
+    foreach ($adjuntos as $adj) {
+        if (file_exists($adj['path'])) {
+            $contenido = file_get_contents($adj['path']);
+            $mensaje .= "--{$boundary}\r\n";
+            $mensaje .= "Content-Type: {$adj['type']}; name=\"{$adj['name']}\"\r\n";
+            $mensaje .= "Content-Transfer-Encoding: base64\r\n";
+            $mensaje .= "Content-ID: <{$adj['cid']}>\r\n";
+            $mensaje .= "Content-Disposition: inline; filename=\"{$adj['name']}\"\r\n";
+            $mensaje .= "\r\n";
+            $mensaje .= chunk_split(base64_encode($contenido));
+            $mensaje .= "\r\n";
+        }
+    }
+
+    $mensaje .= "--{$boundary}--\r\n";
+
+    // Enviar via SMTP directo (sin base64 adicional en el cuerpo)
+    return enviarEmailSMTPRaw($destinatario, $mensaje);
+}
+
+/**
+ * Enviar mensaje SMTP raw (ya formateado con MIME)
+ */
+function enviarEmailSMTPRaw($destinatario, $mensajeCompleto) {
+    $smtpHost = SMTP_HOST;
+    $port = defined('SMTP_PORT') ? SMTP_PORT : 587;
+    $username = SMTP_USER;
+    $password = SMTP_PASS;
+    $from = SMTP_FROM;
+
+    $errno = 0;
+    $errstr = '';
+
+    if ($port == 465) {
+        $host = 'ssl://' . $smtpHost;
+    } else {
+        $host = $smtpHost;
+    }
+
+    $socket = @stream_socket_client("$host:$port", $errno, $errstr, 10);
+
+    if (!$socket) {
+        error_log("SMTP Raw Error: No se pudo conectar a $host:$port - $errstr ($errno)");
+        return false;
+    }
+
+    $getResponse = function() use ($socket) {
+        $response = '';
+        stream_set_timeout($socket, 10);
+        while ($line = fgets($socket, 515)) {
+            $response .= $line;
+            if (substr($line, 3, 1) == ' ' || substr($line, 3, 1) == "\r") break;
+        }
+        return trim($response);
+    };
+
+    $sendCommand = function($command, $expectedCode = null) use ($socket, $getResponse) {
+        fwrite($socket, $command . "\r\n");
+        $response = $getResponse();
+        if ($expectedCode && substr($response, 0, 3) != $expectedCode) {
+            error_log("SMTP Raw: $command -> $response");
+        }
+        return $response;
+    };
+
+    try {
+        $response = $getResponse();
+        if (substr($response, 0, 3) != '220') {
+            throw new Exception("Greeting failed: $response");
+        }
+
+        $response = $sendCommand("EHLO " . gethostname(), '250');
+        if (substr($response, 0, 3) != '250') {
+            throw new Exception("EHLO failed: $response");
+        }
+
+        if ($port == 587) {
+            $response = $sendCommand("STARTTLS", '220');
+            if (substr($response, 0, 3) != '220') {
+                throw new Exception("STARTTLS failed: $response");
+            }
+            $crypto = stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+            if (!$crypto) {
+                throw new Exception("TLS encryption failed");
+            }
+            $response = $sendCommand("EHLO " . gethostname(), '250');
+        }
+
+        $response = $sendCommand("AUTH LOGIN", '334');
+        if (substr($response, 0, 3) != '334') {
+            throw new Exception("AUTH failed: $response");
+        }
+
+        $response = $sendCommand(base64_encode($username), '334');
+        if (substr($response, 0, 3) != '334') {
+            throw new Exception("Username failed: $response");
+        }
+
+        $response = $sendCommand(base64_encode($password), '235');
+        if (substr($response, 0, 3) != '235') {
+            throw new Exception("Password failed: $response");
+        }
+
+        $response = $sendCommand("MAIL FROM:<$from>", '250');
+        if (substr($response, 0, 3) != '250') {
+            throw new Exception("MAIL FROM failed: $response");
+        }
+
+        $response = $sendCommand("RCPT TO:<$destinatario>", '250');
+        if (substr($response, 0, 3) != '250') {
+            throw new Exception("RCPT TO failed: $response");
+        }
+
+        $response = $sendCommand("DATA", '354');
+        if (substr($response, 0, 3) != '354') {
+            throw new Exception("DATA failed: $response");
+        }
+
+        // Enviar mensaje completo (ya formateado)
+        fwrite($socket, $mensajeCompleto . "\r\n.\r\n");
+        $response = $getResponse();
+        if (substr($response, 0, 3) != '250') {
+            throw new Exception("Message send failed: $response");
+        }
+
+        $sendCommand("QUIT");
+        fclose($socket);
+
+        error_log("InverCar Email: OK enviado con adjuntos a $destinatario");
+        return true;
+
+    } catch (Exception $e) {
+        error_log("SMTP Raw Exception para $destinatario: " . $e->getMessage());
+        @fclose($socket);
+        return false;
+    }
 }
 
 /**
