@@ -297,17 +297,20 @@ if (!in_array($filtroEstado, $estadosValidos)) {
 
 // Ordenar vehículos
 $ordenar = $_GET['ordenar'] ?? 'fecha_compra';
-$ordenValidos = ['fecha_compra', 'dias_venta', 'venta_alta', 'venta_baja', 'importe_creciente', 'importe_decreciente'];
+$ordenValidos = ['fecha_compra', 'dias_venta_creciente', 'dias_venta_decreciente', 'venta_alta', 'venta_baja', 'importe_creciente', 'importe_decreciente'];
 if (!in_array($ordenar, $ordenValidos)) {
     $ordenar = 'fecha_compra';
 }
 
 // Definir el ORDER BY según la opción seleccionada
 switch ($ordenar) {
-    case 'dias_venta':
-        // Ordenar por días restantes hasta venta prevista (menor primero)
-        // dias_restantes = dias_previstos - DATEDIFF(NOW(), fecha_compra)
-        $orderByClause = "(COALESCE(v.dias_previstos, 75) - DATEDIFF(NOW(), v.fecha_compra)) ASC, v.fecha_compra DESC";
+    case 'dias_venta_creciente':
+        // De menos días a más días (los que llevan menos tiempo primero)
+        $orderByClause = "DATEDIFF(NOW(), v.fecha_compra) ASC, v.fecha_compra DESC";
+        break;
+    case 'dias_venta_decreciente':
+        // De más días a menos días (los que llevan más tiempo primero)
+        $orderByClause = "DATEDIFF(NOW(), v.fecha_compra) DESC, v.fecha_compra DESC";
         break;
     case 'venta_alta':
         $orderByClause = "v.valor_venta_previsto DESC, v.fecha_compra DESC";
@@ -1092,7 +1095,8 @@ $estadoFases = [
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                     <select id="ordenar" onchange="window.location.href='panel.php?filtro_estado=<?php echo $filtroEstado; ?>&ordenar=' + this.value" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem; border-radius: 0;">
                         <option value="fecha_compra" <?php echo $ordenar === 'fecha_compra' ? 'selected' : ''; ?>>Fecha Compra</option>
-                        <option value="dias_venta" <?php echo $ordenar === 'dias_venta' ? 'selected' : ''; ?>>Días Venta</option>
+                        <option value="dias_venta_creciente" <?php echo $ordenar === 'dias_venta_creciente' ? 'selected' : ''; ?>>Días Venta Creciente</option>
+                        <option value="dias_venta_decreciente" <?php echo $ordenar === 'dias_venta_decreciente' ? 'selected' : ''; ?>>Días Venta Decreciente</option>
                         <option value="venta_alta" <?php echo $ordenar === 'venta_alta' ? 'selected' : ''; ?>>Venta Prevista Alta</option>
                         <option value="venta_baja" <?php echo $ordenar === 'venta_baja' ? 'selected' : ''; ?>>Venta Prevista Baja</option>
                         <option value="importe_creciente" <?php echo $ordenar === 'importe_creciente' ? 'selected' : ''; ?>>Importe Creciente</option>
@@ -1488,7 +1492,6 @@ $estadoFases = [
                         },
                         y: {
                             beginAtZero: true,
-                            max: 25,
                             grid: {
                                 color: 'rgba(255, 255, 255, 0.05)'
                             },

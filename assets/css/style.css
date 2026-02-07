@@ -804,4 +804,110 @@ input[type="number"] {
         display: inline-block;
         width: auto;
     }
+
+    /* Sections padding */
+    .data-section,
+    .how-it-works {
+        padding: 50px 0;
+    }
+
+    .section-title h2 {
+        font-size: 1.8rem;
+    }
+
+    .section-title {
+        margin-bottom: 30px;
+    }
+
+    /* Explanation blocks */
+    .explanation-content {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+
+    .explanation-block {
+        padding: 25px;
+    }
+
+    .explanation-block h3 {
+        font-size: 1.1rem;
+    }
+
+    /* Steps grid */
+    .steps-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .step {
+        padding: 25px 20px;
+    }
+
+    /* Contact form */
+    .contact-form {
+        padding: 20px;
+    }
+
+    /* Footer */
+    .footer {
+        padding: 25px 15px;
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .hero {
+        padding: 90px 15px 40px;
+    }
+
+    .hero h1 {
+        font-size: 1.4rem;
+        line-height: 1.3;
+    }
+
+    .hero p {
+        font-size: 0.9rem;
+    }
+
+    .hero-eyebrow {
+        font-size: 0.7rem;
+    }
+
+    .hero-buttons .btn {
+        padding: 12px 20px;
+        font-size: 0.85rem;
+        width: 100%;
+    }
+
+    .stat-card {
+        padding: 20px 15px;
+    }
+
+    .stat-card h3 {
+        font-size: 9px;
+        letter-spacing: 2px;
+    }
+
+    .stat-card .value {
+        font-size: 1.5rem;
+    }
+
+    .stat-card .label {
+        font-size: 11px;
+    }
+
+    .section-title h2 {
+        font-size: 1.5rem;
+    }
+
+    .explanation-icon-img {
+        height: 140px;
+    }
+
+    /* Form elements */
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
 }
