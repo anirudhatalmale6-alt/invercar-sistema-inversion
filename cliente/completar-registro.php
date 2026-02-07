@@ -54,12 +54,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tipo_inversion = cleanInput($_POST['tipo_inversion'] ?? '');
         $tipo_liquidacion = cleanInput($_POST['tipo_liquidacion'] ?? 'trimestral');
 
-        // Validaciones
-        if (empty($dni) || empty($direccion) || empty($codigo_postal) ||
-            empty($poblacion) || empty($provincia) || empty($telefono) ||
-            $capital <= 0 || empty($tipo_inversion) || empty($tipo_liquidacion)) {
-            $error = 'Por favor, completa todos los campos.';
-        } elseif (!validarDNI($dni)) {
+        // Validaciones - Solo telefono y capital son obligatorios
+        if (empty($telefono)) {
+            $error = 'El teléfono es obligatorio.';
+        } elseif ($capital <= 0) {
+            $error = 'El capital previsto es obligatorio.';
+        } elseif (!empty($dni) && !validarDNI($dni)) {
+            // DNI es opcional, pero si se proporciona debe ser válido
             $error = 'El DNI/NIE no es válido.';
         } elseif ($tipo_inversion !== 'fija') {
             $error = 'Tipo de inversión no válido.';
@@ -69,12 +70,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'El capital mínimo de inversión es de 1.000€.';
         } else {
             try {
-                // Verificar que el DNI no esté ya registrado
-                $stmt = $db->prepare("SELECT id FROM clientes WHERE dni = ? AND id != ?");
-                $stmt->execute([$dni, $clienteId]);
-                if ($stmt->fetch()) {
-                    $error = 'Este DNI ya está registrado con otra cuenta.';
-                } else {
+                // Verificar que el DNI no esté ya registrado (solo si se proporciona)
+                $dniParaGuardar = !empty($dni) ? $dni : null;
+                if (!empty($dni)) {
+                    $stmt = $db->prepare("SELECT id FROM clientes WHERE dni = ? AND id != ?");
+                    $stmt->execute([$dni, $clienteId]);
+                    if ($stmt->fetch()) {
+                        $error = 'Este DNI ya está registrado con otra cuenta.';
+                    }
+                }
+
+                if (empty($error)) {
                     // Actualizar cliente - activo = 0 hasta activación manual del admin
                     // capital_previsto es solo informativo, no crea registro en capital
                     $stmt = $db->prepare("
@@ -93,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         WHERE id = ?
                     ");
                     $stmt->execute([
-                        $dni, $direccion, $codigo_postal, $poblacion, $provincia,
+                        $dniParaGuardar, $direccion, $codigo_postal, $poblacion, $provincia,
                         $pais, $telefono, $capital, $tipo_liquidacion, $clienteId
                     ]);
 
@@ -273,38 +279,39 @@ $provincias = [
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="dni">DNI/NIE *</label>
-                            <input type="text" id="dni" name="dni" required
-                                   value="<?php echo escape($_POST['dni'] ?? ''); ?>"
-                                   placeholder="12345678A" maxlength="9">
-                        </div>
-
-                        <div class="form-group">
                             <label for="telefono">Teléfono *</label>
                             <input type="tel" id="telefono" name="telefono" required
                                    value="<?php echo escape($_POST['telefono'] ?? ''); ?>"
                                    placeholder="+34 600 000 000">
                         </div>
+
+                        <div class="form-group">
+                            <label for="dni">DNI/NIE</label>
+                            <input type="text" id="dni" name="dni"
+                                   value="<?php echo escape($_POST['dni'] ?? ''); ?>"
+                                   placeholder="12345678A" maxlength="9">
+                            <small style="color: var(--text-muted);">Opcional</small>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="direccion">Dirección *</label>
-                        <input type="text" id="direccion" name="direccion" required
+                        <label for="direccion">Dirección</label>
+                        <input type="text" id="direccion" name="direccion"
                                value="<?php echo escape($_POST['direccion'] ?? ''); ?>"
                                placeholder="Calle, número, piso...">
                     </div>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="codigo_postal">Código Postal *</label>
-                            <input type="text" id="codigo_postal" name="codigo_postal" required
+                            <label for="codigo_postal">Código Postal</label>
+                            <input type="text" id="codigo_postal" name="codigo_postal"
                                    value="<?php echo escape($_POST['codigo_postal'] ?? ''); ?>"
                                    placeholder="28001" maxlength="5">
                         </div>
 
                         <div class="form-group">
-                            <label for="poblacion">Población *</label>
-                            <input type="text" id="poblacion" name="poblacion" required
+                            <label for="poblacion">Población</label>
+                            <input type="text" id="poblacion" name="poblacion"
                                    value="<?php echo escape($_POST['poblacion'] ?? ''); ?>"
                                    placeholder="Madrid">
                         </div>
@@ -312,8 +319,8 @@ $provincias = [
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="provincia">Provincia *</label>
-                            <select id="provincia" name="provincia" required>
+                            <label for="provincia">Provincia</label>
+                            <select id="provincia" name="provincia">
                                 <option value="">Selecciona...</option>
                                 <?php foreach ($provincias as $prov): ?>
                                     <option value="<?php echo escape($prov); ?>"
@@ -325,8 +332,8 @@ $provincias = [
                         </div>
 
                         <div class="form-group">
-                            <label for="pais">País *</label>
-                            <input type="text" id="pais" name="pais" required
+                            <label for="pais">País</label>
+                            <input type="text" id="pais" name="pais"
                                    value="<?php echo escape($_POST['pais'] ?? 'España'); ?>">
                         </div>
                     </div>

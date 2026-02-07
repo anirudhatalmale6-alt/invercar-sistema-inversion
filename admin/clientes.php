@@ -233,6 +233,12 @@ $clientes = $stmt->fetchAll();
 // Contar registros pendientes (incompletos O inactivos)
 $pendientesCount = $db->query("SELECT COUNT(*) as total FROM clientes WHERE registro_completo = 0 OR activo = 0")->fetch()['total'];
 
+// Calcular capital total de todos los clientes para porcentajes
+$capitalTotalGlobal = $db->query("
+    SELECT SUM(importe_ingresado) - SUM(importe_retirado) as total
+    FROM capital WHERE activo = 1
+")->fetch()['total'] ?? 0;
+
 // Cliente a editar
 $clienteEditar = null;
 if (isset($_GET['editar'])) {
@@ -572,6 +578,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             <th>Cliente</th>
                                             <th>Email</th>
                                             <th>Capital Total</th>
+                                            <th>%</th>
                                             <th>Fija</th>
                                             <th>Variable</th>
                                             <th>Estado</th>
@@ -602,6 +609,7 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
                                             </td>
                                             <td><?php echo escape($c['email']); ?></td>
                                             <td style="font-weight: bold; color: var(--gold);"><?php echo formatMoney($capTotal); ?></td>
+                                            <td style="color: var(--primary-color); font-weight: 500;"><?php echo $capitalTotalGlobal > 0 ? number_format(($capTotal / $capitalTotalGlobal) * 100, 1, ',', '.') . '%' : '0%'; ?></td>
                                             <td><span class="badge badge-info"><?php echo formatMoney($capFija); ?></span></td>
                                             <td><span class="badge badge-success"><?php echo formatMoney($capVariable); ?></span></td>
                                             <td>
