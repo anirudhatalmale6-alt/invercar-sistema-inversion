@@ -122,11 +122,20 @@ $sqlVehiculos = "
 ";
 if ($filtroEstado === 'en_estudio') {
     $sqlVehiculos .= " AND estado = 'en_estudio'";
-} elseif ($filtroEstado === 'todos_menos_estudio') {
-    $sqlVehiculos .= " AND estado != 'en_estudio'";
+} elseif ($filtroEstado === 'en_espera') {
+    $sqlVehiculos .= " AND estado = 'en_espera'";
+} elseif ($filtroEstado === 'en_preparacion') {
+    $sqlVehiculos .= " AND estado = 'en_preparacion'";
+} elseif ($filtroEstado === 'en_venta') {
+    $sqlVehiculos .= " AND estado = 'en_venta'";
+} elseif ($filtroEstado === 'reservado') {
+    $sqlVehiculos .= " AND estado = 'reservado'";
 } elseif ($filtroEstado === 'vendido') {
     $sqlVehiculos .= " AND estado = 'vendido'";
+} elseif ($filtroEstado === 'todos_menos_estudio') {
+    $sqlVehiculos .= " AND estado != 'en_estudio'";
 }
+// Si es 'todos', no añade ningún filtro adicional
 $sqlVehiculos .= " ORDER BY {$orderByClause}";
 $vehiculosActivos = $db->query($sqlVehiculos)->fetchAll();
 
@@ -1006,8 +1015,12 @@ $ultimosClientes = $db->query("
                             </select>
                             <select id="filtroEstado" onchange="window.location.href='?filtro_estado=' + this.value + '&ordenar=<?php echo $ordenar; ?>'" style="padding: 8px 12px; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-light); font-size: 0.85rem;">
                                 <option value="en_estudio" <?php echo $filtroEstado === 'en_estudio' ? 'selected' : ''; ?>>En Estudio</option>
+                                <option value="en_espera" <?php echo $filtroEstado === 'en_espera' ? 'selected' : ''; ?>>En Espera</option>
+                                <option value="en_preparacion" <?php echo $filtroEstado === 'en_preparacion' ? 'selected' : ''; ?>>En Preparación</option>
+                                <option value="en_venta" <?php echo $filtroEstado === 'en_venta' ? 'selected' : ''; ?>>En Venta</option>
+                                <option value="reservado" <?php echo $filtroEstado === 'reservado' ? 'selected' : ''; ?>>Reservado</option>
+                                <option value="vendido" <?php echo $filtroEstado === 'vendido' ? 'selected' : ''; ?>>Vendido</option>
                                 <option value="todos_menos_estudio" <?php echo $filtroEstado === 'todos_menos_estudio' ? 'selected' : ''; ?>>Todos menos En Estudio</option>
-                                <option value="vendido" <?php echo $filtroEstado === 'vendido' ? 'selected' : ''; ?>>Vendidos</option>
                                 <option value="todos" <?php echo $filtroEstado === 'todos' ? 'selected' : ''; ?>>Todos</option>
                             </select>
                         </div>
