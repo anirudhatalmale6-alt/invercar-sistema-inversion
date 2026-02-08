@@ -54,5 +54,9 @@ if (DEBUG_MODE) {
 
 // Iniciar sesión si no está iniciada
 if (session_status() === PHP_SESSION_NONE) {
+    // Si hay cookie de recordar, extender la sesión
+    if (isset($_COOKIE['invercar_remember']) && $_COOKIE['invercar_remember'] === '1') {
+        session_set_cookie_params(30 * 24 * 3600); // 30 días
+    }
     session_start();
 }

@@ -36,6 +36,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['cliente_id'] = $cliente['id'];
                     $_SESSION['cliente_nombre'] = $cliente['nombre'] . ' ' . $cliente['apellidos'];
 
+                    // Recordar sesión
+                    $recordar = isset($_POST['recordar']) ? true : false;
+                    if ($recordar) {
+                        // Extender cookie de sesión a 30 días
+                        $duracion = 30 * 24 * 3600;
+                        setcookie('invercar_remember', '1', time() + $duracion, '/', '', false, true);
+                        setcookie(session_name(), session_id(), time() + $duracion, '/', '', false, true);
+                    }
+
                     // Si no ha completado el registro, redirigir
                     if (!$cliente['registro_completo']) {
                         $_SESSION['verificacion_cliente_id'] = $cliente['id'];
@@ -101,15 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .auth-footer a {
             color: var(--primary-color);
         }
-        .forgot-link {
-            display: block;
-            text-align: right;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-top: -10px;
-            margin-bottom: 20px;
-        }
-        .forgot-link:hover {
+        a:hover {
             color: var(--primary-color);
         }
     </style>
@@ -151,7 +152,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                            placeholder="Tu contraseña">
                 </div>
 
-                <a href="recuperar-password.php" class="forgot-link">¿Olvidaste tu contraseña?</a>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: -10px; margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-muted); font-size: 0.85rem;">
+                        <input type="checkbox" name="recordar" value="1" style="width: auto; accent-color: var(--primary-color);">
+                        Recordarme
+                    </label>
+                    <a href="recuperar-password.php" style="color: var(--text-muted); font-size: 0.85rem;">¿Olvidaste tu contraseña?</a>
+                </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Iniciar Sesión</button>
             </form>

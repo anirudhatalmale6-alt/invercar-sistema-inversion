@@ -35,6 +35,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['admin_nombre'] = $admin['nombre'];
                     $_SESSION['admin_usuario'] = $admin['usuario'];
 
+                    // Recordar sesión
+                    $recordar = isset($_POST['recordar']) ? true : false;
+                    if ($recordar) {
+                        $duracion = 30 * 24 * 3600;
+                        setcookie('invercar_remember', '1', time() + $duracion, '/', '', false, true);
+                        setcookie(session_name(), session_id(), time() + $duracion, '/', '', false, true);
+                    }
+
                     redirect('index.php');
                 }
             } catch (Exception $e) {
@@ -125,6 +133,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label for="password">Contraseña</label>
                     <input type="password" id="password" name="password" required
                            placeholder="Tu contraseña" autocomplete="current-password">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-muted); font-size: 0.85rem;">
+                        <input type="checkbox" name="recordar" value="1" style="width: auto; accent-color: var(--primary-color);">
+                        Recordarme
+                    </label>
                 </div>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Acceder</button>
