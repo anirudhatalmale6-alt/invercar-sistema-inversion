@@ -72,7 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                     <li><a href="#inicio" class="active">Inicio</a></li>
                     <li><a href="#rentabilidad-actual">Rentabilidad Actual</a></li>
                     <li><a href="#como-funciona">Cómo Funciona</a></li>
-                    <li><a href="#secciones">Secciones</a></li>
                     <li><a href="#como-invertir">Cómo Invertir</a></li>
                     <li><a href="#quienes-somos">Quiénes Somos</a></li>
                     <li><a href="#contacto">Contacto</a></li>
@@ -226,82 +225,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
         </div>
     </section>
 
-    <!-- Secciones de Productos -->
-    <section class="data-section" id="secciones">
-        <div class="container">
-            <div class="section-title">
-                <h2>Nuestras Secciones</h2>
-                <p>Componentes y accesorios de alta calidad para tu vehiculo</p>
-            </div>
-            <div class="secciones-grid">
-                <div class="seccion-card">
-                    <div class="seccion-carousel" data-seccion="cuadro">
-                        <img src="assets/images/secciones/Cuadro-1.jpg" alt="Cuadros de Instrumentos" class="seccion-img active">
-                        <img src="assets/images/secciones/Cuadro-2.jpg" alt="Cuadros de Instrumentos" class="seccion-img">
-                        <img src="assets/images/secciones/Cuadro-3.jpg" alt="Cuadros de Instrumentos" class="seccion-img">
-                        <div class="seccion-dots">
-                            <span class="dot active"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                    <h3>Cuadros de Instrumentos</h3>
-                    <p>Cuadros digitales de ultima generacion</p>
-                </div>
-                <div class="seccion-card">
-                    <div class="seccion-carousel" data-seccion="camara">
-                        <img src="assets/images/secciones/Camara-1.jpg" alt="Camaras" class="seccion-img active">
-                        <img src="assets/images/secciones/Camara-2.jpg" alt="Camaras" class="seccion-img">
-                        <img src="assets/images/secciones/Camara-3.jpg" alt="Camaras" class="seccion-img">
-                        <div class="seccion-dots">
-                            <span class="dot active"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                    <h3>Camaras</h3>
-                    <p>Camaras de vision trasera y 360 grados</p>
-                </div>
-                <div class="seccion-card">
-                    <div class="seccion-carousel" data-seccion="pantalla">
-                        <img src="assets/images/secciones/Pantallas-2.jpg" alt="Pantallas" class="seccion-img active">
-                        <img src="assets/images/secciones/Pantallas-3.jpg" alt="Pantallas" class="seccion-img">
-                        <img src="assets/images/secciones/Pantallas-4.jpg" alt="Pantallas" class="seccion-img">
-                        <div class="seccion-dots">
-                            <span class="dot active"></span>
-                            <span class="dot"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                    <h3>Pantallas</h3>
-                    <p>Pantallas multimedia y navegacion</p>
-                </div>
-                <div class="seccion-card">
-                    <div class="seccion-carousel" data-seccion="carplay">
-                        <img src="assets/images/secciones/CarPlay-1.jpg" alt="CarPlay" class="seccion-img active">
-                        <img src="assets/images/secciones/CarPlay-2.jpg" alt="CarPlay" class="seccion-img">
-                        <div class="seccion-dots">
-                            <span class="dot active"></span>
-                            <span class="dot"></span>
-                        </div>
-                    </div>
-                    <h3>CarPlay</h3>
-                    <p>Sistemas Apple CarPlay y Android Auto</p>
-                </div>
-                <div class="seccion-card">
-                    <div class="seccion-carousel" data-seccion="climatizador">
-                        <img src="assets/images/secciones/Climatizador-1.jpg" alt="Climatizadores" class="seccion-img active">
-                        <div class="seccion-dots">
-                            <span class="dot active"></span>
-                        </div>
-                    </div>
-                    <h3>Climatizadores</h3>
-                    <p>Paneles de climatizacion digital</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- How To Invest Section - Steps -->
     <section class="data-section" id="como-invertir">
         <div class="container">
@@ -438,21 +361,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['contacto'])) {
                 });
             });
         }
-
-        // Secciones carousel - auto rotate images
-        document.querySelectorAll('.seccion-carousel').forEach(function(carousel) {
-            var imgs = carousel.querySelectorAll('.seccion-img');
-            var dots = carousel.querySelectorAll('.dot');
-            if (imgs.length <= 1) return;
-            var current = 0;
-            setInterval(function() {
-                imgs[current].classList.remove('active');
-                dots[current].classList.remove('active');
-                current = (current + 1) % imgs.length;
-                imgs[current].classList.add('active');
-                dots[current].classList.add('active');
-            }, 3000);
-        });
 
         // Smooth scroll for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
