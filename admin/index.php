@@ -286,31 +286,29 @@ for ($i = 3; $i >= 0; $i--) {
     ];
 }
 
-// Obtener últimas 9 semanas de rentabilidad del histórico
-$rentabilidadHistorico = [];
-try {
-    // Intentar obtener datos reales de la tabla
-    $stmt = $db->prepare("
-        SELECT semana, anio, tipo, porcentaje, porcentaje_previsto, rentabilidad_generada, capital_base
-        FROM rentabilidad_historico
-        WHERE (anio = :anio AND semana <= :semana) OR (anio = :anio_prev AND semana > :semana)
-        ORDER BY anio DESC, semana DESC
-        LIMIT 18
-    ");
-    $semanaLimite = $semanaActual - 9;
-    $anioPrev = $semanaLimite < 1 ? $anioActual - 1 : $anioActual;
-    $stmt->execute([
-        ':anio' => $anioActual,
-        ':semana' => $semanaActual,
-        ':anio_prev' => $anioPrev
-    ]);
-    $rentabilidadHistorico = $stmt->fetchAll();
-} catch (Exception $e) {
-    // Tabla no existe aún, se usarán datos simulados
-}
-
-// Preparar datos para el gráfico (últimas 9 semanas)
+// Preparar datos para el gráfico (últimas 9 semanas) - cálculo dinámico desde vehículos
 $semanasGrafico = [];
+
+// Preparar consultas para calcular rentabilidad por semana
+$stmtPrevista = $db->prepare("
+    SELECT
+        COALESCE(SUM(valor_venta_previsto - precio_compra - prevision_gastos), 0) as rentabilidad,
+        COALESCE(SUM(precio_compra + prevision_gastos), 0) as inversion
+    FROM vehiculos
+    WHERE fecha_compra <= ?
+      AND (estado != 'vendido' OR fecha_venta IS NULL OR fecha_venta > ?)
+      AND estado != 'en_estudio'
+");
+
+$stmtObtenida = $db->prepare("
+    SELECT
+        COALESCE(SUM(precio_venta_real - precio_compra - gastos), 0) as rentabilidad,
+        COALESCE(SUM(precio_compra + gastos), 0) as inversion
+    FROM vehiculos
+    WHERE estado = 'vendido' AND precio_venta_real IS NOT NULL
+      AND fecha_venta <= ?
+");
+
 for ($i = 8; $i >= 0; $i--) {
     $semNum = $semanaActual - $i;
     $anio = $anioActual;
@@ -319,34 +317,27 @@ for ($i = 8; $i >= 0; $i--) {
         $anio--;
     }
 
-    // Por defecto: Fija siempre tiene valor configurado, Variable y Prevista son 0 para semanas sin datos históricos
+    // Calcular fecha de fin de esta semana
+    $finSemana = new DateTime();
+    $finSemana->setISODate($anio, $semNum, 7); // Domingo
+    $fechaFinSemana = $finSemana->format('Y-m-d');
+
+    // Rentabilidad Fija: siempre el valor configurado
     $rentFija = $rentabilidadFija;
-    $rentVariable = 0; // Variable obtenida es 0 hasta que se vendan vehículos
-    $rentVariablePrevista = 0; // Prevista es 0 para semanas pasadas sin datos
 
-    // Buscar datos en histórico
-    $tieneHistorico = false;
-    foreach ($rentabilidadHistorico as $hist) {
-        if ($hist['semana'] == $semNum && $hist['anio'] == $anio) {
-            $tieneHistorico = true;
-            if ($hist['tipo'] == 'fija') {
-                $rentFija = floatval($hist['porcentaje']);
-            }
-            if ($hist['tipo'] == 'variable') {
-                $rentVariable = floatval($hist['porcentaje']);
-                if (isset($hist['porcentaje_previsto']) && $hist['porcentaje_previsto'] !== null) {
-                    $rentVariablePrevista = floatval($hist['porcentaje_previsto']);
-                }
-            }
-        }
-    }
+    // Rentabilidad Variable Prevista: vehículos activos a fecha de fin de semana
+    $stmtPrevista->execute([$fechaFinSemana, $fechaFinSemana]);
+    $dataPrevista = $stmtPrevista->fetch();
+    $rentVariablePrevista = floatval($dataPrevista['inversion']) > 0
+        ? (floatval($dataPrevista['rentabilidad']) / floatval($dataPrevista['inversion'])) * 100
+        : 0;
 
-    // Para la semana actual (i=0), usar los valores calculados
-    if ($i === 0) {
-        $rentVariablePrevista = $porcentajeRentabilidadPrevista;
-        // VariableObtenida se calcula de vehículos vendidos - si hay vehículos vendidos, usar ese porcentaje
-        $rentVariable = $porcentajeRentabilidadObtenida;
-    }
+    // Rentabilidad Variable Obtenida: vehículos vendidos hasta esa semana
+    $stmtObtenida->execute([$fechaFinSemana]);
+    $dataObtenida = $stmtObtenida->fetch();
+    $rentVariable = floatval($dataObtenida['inversion']) > 0
+        ? (floatval($dataObtenida['rentabilidad']) / floatval($dataObtenida['inversion'])) * 100
+        : 0;
 
     $mediaRent = ($rentFija + $rentVariable) / 2;
 
@@ -354,10 +345,10 @@ for ($i = 8; $i >= 0; $i--) {
         'semana' => $semNum,
         'anio' => $anio,
         'label' => 'S' . $semNum,
-        'fija' => $rentFija,
-        'variable' => $rentVariable,
-        'variablePrevista' => $rentVariablePrevista,
-        'media' => $mediaRent
+        'fija' => round($rentFija, 1),
+        'variable' => round($rentVariable, 1),
+        'variablePrevista' => round($rentVariablePrevista, 1),
+        'media' => round($mediaRent, 1)
     ];
 }
 

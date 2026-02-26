@@ -240,19 +240,28 @@ foreach ($todasInversiones as $inv) {
 $semanaActual = (int) date('W');
 $anioActual = (int) date('Y');
 
-// Datos para el gráfico de líneas (últimas 9 semanas)
+// Datos para el gráfico de líneas (últimas 9 semanas) - cálculo dinámico
 $semanasGrafico = [];
 
-// Obtener datos históricos de rentabilidad del cliente
-$stmtHistorico = $db->prepare("
-    SELECT semana, anio, rentabilidad_porcentaje
-    FROM rentabilidad_semanal
-    WHERE cliente_id = ?
-    ORDER BY anio DESC, semana DESC
-    LIMIT 18
+// Preparar consultas para calcular rentabilidad por semana
+$stmtPrevistaCli = $db->prepare("
+    SELECT
+        COALESCE(SUM(valor_venta_previsto - precio_compra - prevision_gastos), 0) as rentabilidad,
+        COALESCE(SUM(precio_compra + prevision_gastos), 0) as inversion
+    FROM vehiculos
+    WHERE fecha_compra <= ?
+      AND (estado != 'vendido' OR fecha_venta IS NULL OR fecha_venta > ?)
+      AND estado != 'en_estudio'
 ");
-$stmtHistorico->execute([$cliente['id']]);
-$historialRent = $stmtHistorico->fetchAll();
+
+$stmtObtenidaCli = $db->prepare("
+    SELECT
+        COALESCE(SUM(precio_venta_real - precio_compra - gastos), 0) as rentabilidad,
+        COALESCE(SUM(precio_compra + gastos), 0) as inversion
+    FROM vehiculos
+    WHERE estado = 'vendido' AND precio_venta_real IS NOT NULL
+      AND fecha_venta <= ?
+");
 
 for ($i = 8; $i >= 0; $i--) {
     $semNum = $semanaActual - $i;
@@ -262,29 +271,43 @@ for ($i = 8; $i >= 0; $i--) {
         $anio--;
     }
 
-    // Buscar datos en histórico del cliente
-    $rentSemana = 0;
-    foreach ($historialRent as $hist) {
-        if ($hist['semana'] == $semNum && $hist['anio'] == $anio) {
-            $rentSemana = floatval($hist['rentabilidad_porcentaje']);
-            break;
-        }
-    }
+    // Calcular fecha de fin de esta semana
+    $finSemanaCli = new DateTime();
+    $finSemanaCli->setISODate($anio, $semNum, 7);
+    $fechaFinSemanaCli = $finSemanaCli->format('Y-m-d');
 
-    // Para semana actual, usar la rentabilidad calculada si no hay histórico
-    if ($i === 0 && $rentSemana === 0) {
-        if ($capitalTotal > 0) {
-            $rentSemana = ($rentabilidadTotalEuros / $capitalTotal) * 100;
-        }
-    }
+    // Fija: tasa configurada si el cliente tiene capital fija
+    $rentFijaCli = $capitalFija > 0 ? $tasaFijaAnual : 0;
+
+    // Variable Prevista: del admin menos comisión
+    $stmtPrevistaCli->execute([$fechaFinSemanaCli, $fechaFinSemanaCli]);
+    $dataPrevCli = $stmtPrevistaCli->fetch();
+    $rentVarPrevAdmin = floatval($dataPrevCli['inversion']) > 0
+        ? (floatval($dataPrevCli['rentabilidad']) / floatval($dataPrevCli['inversion'])) * 100
+        : 0;
+    $rentVariableCli = $capitalVariable > 0 ? max(0, $rentVarPrevAdmin - $comisionPorcentajeVariable) : 0;
+
+    // Variable Obtenida: vehículos vendidos hasta esa semana, menos comisión
+    $stmtObtenidaCli->execute([$fechaFinSemanaCli]);
+    $dataObtCli = $stmtObtenidaCli->fetch();
+    $rentVarObtAdmin = floatval($dataObtCli['inversion']) > 0
+        ? (floatval($dataObtCli['rentabilidad']) / floatval($dataObtCli['inversion'])) * 100
+        : 0;
+    $rentVariableObtCli = $rentVarObtAdmin > 0 ? max(0, $rentVarObtAdmin - $comisionPorcentajeVariable) : 0;
+
+    // Media: promedio de fija y variable
+    $varMayor = max($rentVariableCli, $rentVariableObtCli);
+    $mediaCli = ($rentFijaCli + $varMayor) / 2;
+    if ($rentFijaCli <= 0 && $varMayor > 0) $mediaCli = $varMayor;
+    if ($rentFijaCli > 0 && $varMayor <= 0) $mediaCli = $rentFijaCli;
 
     $semanasGrafico[] = [
         'semana' => $semNum,
         'anio' => $anio,
         'label' => 'S' . $semNum,
-        'fija' => $capitalFija > 0 ? $tasaFijaAnual : 0,
-        'variable' => $capitalVariable > 0 ? ($i === 0 ? $tasaVariablePrevista : 0) : 0,
-        'media' => $rentSemana
+        'fija' => round($rentFijaCli, 1),
+        'variable' => round(max($rentVariableCli, $rentVariableObtCli), 1),
+        'media' => round($mediaCli, 1)
     ];
 }
 
