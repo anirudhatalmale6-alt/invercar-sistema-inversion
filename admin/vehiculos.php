@@ -12,6 +12,8 @@ if (!isAdminLogueado()) {
 $db = getDB();
 $error = '';
 $exito = '';
+$showMulticarModal = false;
+$multicarVehiculoId = 0;
 
 // Exportar CSV
 if (isset($_GET['export']) && $_GET['export'] === 'csv') {
@@ -177,6 +179,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         $exito = 'Vehículo creado correctamente.';
 
+                        // Ofrecer publicar en MultiCar si se pone en venta
+                        if ($estado === 'en_venta') {
+                            $showMulticarModal = true;
+                            $multicarVehiculoId = $vehiculoId;
+                        }
+
                         // Notificar a clientes si el vehículo es público y está en un estado activo
                         $estadosActivos = ['en_espera', 'en_preparacion', 'en_venta', 'reservado'];
                         if ($publico == 1 && in_array($estado, $estadosActivos)) {
@@ -247,6 +255,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
 
                         $exito = 'Vehículo actualizado correctamente.';
+
+                        // Ofrecer publicar en MultiCar si se pone en venta
+                        if ($estado === 'en_venta' && $estadoAnterior !== 'en_venta') {
+                            $showMulticarModal = true;
+                            $multicarVehiculoId = $id;
+                        }
 
                         if ($debeNotificar) {
                             try {
@@ -814,5 +828,77 @@ $mensajesNoLeidos = $db->query("SELECT COUNT(*) as total FROM contactos WHERE le
             }
         }
     </script>
+
+    <?php if ($showMulticarModal && $multicarVehiculoId > 0): ?>
+    <!-- Modal: Publicar en MultiCar -->
+    <div class="modal-overlay" id="modalMulticar" style="display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:12px; padding:30px; max-width:450px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.3); text-align:center;">
+            <div style="width:56px; height:56px; border-radius:50%; background:#3b82f6; margin:0 auto 20px; display:flex; align-items:center; justify-content:center;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            </div>
+            <h3 style="margin:0 0 10px; font-size:1.2rem; color:#1e293b;">Publicar en MultiCar</h3>
+            <p style="color:#64748b; font-size:0.9rem; margin:0 0 25px; line-height:1.5;">
+                El vehículo se ha puesto en venta. ¿Deseas publicarlo también en <strong>MultiCar</strong>?<br>
+                Se creará como <em>borrador</em> para que puedas revisarlo antes de activarlo.
+            </p>
+            <div id="multicarResult" style="display:none; margin-bottom:15px; padding:10px; border-radius:8px; font-size:0.85rem;"></div>
+            <div style="display:flex; gap:10px; justify-content:center;" id="multicarBtns">
+                <button onclick="document.getElementById('modalMulticar').style.display='none'" class="btn btn-outline" style="min-width:100px;">No, gracias</button>
+                <button onclick="publicarEnMulticar(<?= $multicarVehiculoId ?>)" class="btn btn-primary" id="btnPublicar" style="min-width:140px;">
+                    <span id="btnPublicarText">Sí, publicar</span>
+                    <span id="btnPublicarLoading" style="display:none;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" style="animation:spin 1s linear infinite;"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="60 30"/></svg>
+                        Publicando...
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+    function publicarEnMulticar(vehiculoId) {
+        var btn = document.getElementById('btnPublicar');
+        var textEl = document.getElementById('btnPublicarText');
+        var loadEl = document.getElementById('btnPublicarLoading');
+        var resultEl = document.getElementById('multicarResult');
+
+        btn.disabled = true;
+        textEl.style.display = 'none';
+        loadEl.style.display = 'inline-flex';
+
+        fetch('publicar_multicar.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vehiculo_id: vehiculoId })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            resultEl.style.display = 'block';
+            if (data.success) {
+                resultEl.style.background = '#dcfce7';
+                resultEl.style.color = '#166534';
+                resultEl.innerHTML = '✓ ' + data.message + (data.photos_imported > 0 ? ' (' + data.photos_imported + ' fotos importadas)' : '');
+                document.getElementById('multicarBtns').innerHTML = '<button onclick="document.getElementById(\'modalMulticar\').style.display=\'none\'" class="btn btn-primary" style="min-width:120px;">Cerrar</button>';
+            } else {
+                resultEl.style.background = '#fee2e2';
+                resultEl.style.color = '#991b1b';
+                resultEl.innerHTML = '✗ ' + data.message;
+                btn.disabled = false;
+                textEl.style.display = 'inline';
+                loadEl.style.display = 'none';
+            }
+        })
+        .catch(function(err) {
+            resultEl.style.display = 'block';
+            resultEl.style.background = '#fee2e2';
+            resultEl.style.color = '#991b1b';
+            resultEl.innerHTML = '✗ Error de conexión: ' + err.message;
+            btn.disabled = false;
+            textEl.style.display = 'inline';
+            loadEl.style.display = 'none';
+        });
+    }
+    </script>
+    <?php endif; ?>
+
 </body>
 </html>
